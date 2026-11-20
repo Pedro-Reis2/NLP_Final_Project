@@ -14,7 +14,9 @@ Scope source of truth: `docs/pitch.pdf` (approved). `docs/related-work.pdf` §6 
 - **Model**: `Qwen/Qwen2.5-Coder-1.5B-Instruct`, fp16, single model for everything.
 - **Data**: HumanEval+ (164) + MBPP+ (378) = 542 problems, EvalPlus extended tests. If time gets tight: HumanEval+ only.
 - **Methods (MarkLLM only, never reimplement)**: KGW, Unigram (fixed list), SWEET. EWD = extra detector on the KGW generations (no extra generation). Plus an unwatermarked baseline generation.
-- **δ = 2** (all methods); **δ = 1** added only because the benchmark shows it is cheap. It is queued after δ=2 and is the first thing to drop.
+- **δ ∈ {2, 4}** (all methods). δ=4 replaced the planned δ=1 (user decision, Day 1): a 40-problem probe gave mean z ≈ 1.3 and ~15–20% TPR at δ=2, so δ=1 would leave nothing for attacks to remove. δ=4 is queued after δ=2 and is the first thing to drop.
+- **Generation configs (9)**: `nowm`, then `kgw/ewd/unigram/sweet` × δ. EWD has its own generation (MarkLLM's KGW and EWD use different green-list hashes) and is scored as EWD (weighted) and EWD-unweighted (plain z on the same flags).
+- **Problems: 540** (HumanEval/32 and Mbpp/255 excluded as harness artifacts; see RESULTS.md).
 - **Fixed settings**: γ = 0.5, MarkLLM default hash key (15485863), KGW/EWD prefix length 1, SWEET entropy threshold 0.9, seed 42. Greedy decoding, n=1, `max_new_tokens=512`, stop at the closing ``` fence. EvalPlus instruct prompt + `evalplus.sanitize`.
 - **Logging**: every output row carries `config_id`. Every run writes `outputs/manifests/<config_id>.json` (method, γ, δ, seed, key, entropy threshold, decoding params, model id, library versions, git SHA).
 - **Negatives**: 542 EvalPlus canonical solutions + ~1,000 accepted Python files from Project CodeNet (Python800), 30–1,000 tokens. **Thresholds are set empirically at 1% FPR** on these negatives. Also report the analytic z=2.33 and the FPR on unwatermarked Qwen generations.
@@ -27,11 +29,12 @@ Scope source of truth: `docs/pitch.pdf` (approved). `docs/related-work.pdf` §6 
 - QP4: KGW and Unigram, 300 continuations × 200 tokens from news prefixes (MarkLLM's bundled C4 sample). Attack = random word substitution. Intensity = fraction of tokens changed, comparable with the code attacks.
 
 ## CUT (future work; mention in the paper, do not build)
-Multichannel scheme, LLM-rewrite attack, STONE, ACW, other languages, bigger models, δ=0.5.
+Multichannel scheme, LLM-rewrite attack, STONE, ACW, other languages, bigger models, δ ∈ {0.5, 1}.
 
 ## Fallback rules
-- If full generation hasn't started by Day 1 H4 → drop δ=1.
-- If attacks aren't evaluated by Day 2 noon → restrict attack analysis to HumanEval+, then drop δ=1 from the attack grid.
+- If full generation hasn't started by Day 1 H4 → drop δ=4.
+- If attacks aren't evaluated by Day 2 noon → restrict attack analysis to HumanEval+, then drop δ=4 from the attack grid.
+- Never run two test-heavy jobs (EvalPlus) at the same time: heavy tasks time out under load.
 - Never block on OPTIONAL work.
 
 ## Working rules

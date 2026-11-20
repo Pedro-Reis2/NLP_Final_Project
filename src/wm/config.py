@@ -92,7 +92,9 @@ GEN_CONFIGS: dict[str, WMConfig] = {
     for c in [
         _mk(None, None),
         _mk("KGW", 2), _mk("EWD", 2), _mk("Unigram", 2), _mk("SWEET", 2),
-        _mk("KGW", 1), _mk("EWD", 1), _mk("Unigram", 1), _mk("SWEET", 1),
+        # δ=4 replaces the planned δ=1 (user decision, Day 1): a 40-problem probe gave
+        # mean z ≈ 1.3 at δ=2, so δ=1 would leave ~0% TPR before any attack.
+        _mk("KGW", 4), _mk("EWD", 4), _mk("Unigram", 4), _mk("SWEET", 4),
     ]
 }
 
