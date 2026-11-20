@@ -8,18 +8,16 @@
   "seed": 42,
   "extra": {},
   "decoding": {
-    "do_sample": true,
+    "do_sample": false,
     "max_new_tokens": 512,
-    "num_return_sequences": 1,
-    "temperature": 0.7,
-    "top_p": 0.95
+    "num_return_sequences": 1
   },
   "model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
   "batch_size": 32,
   "stop": "\n```",
-  "n_problems": 40,
-  "git_sha": "9624fa5",
-  "time": "2026-11-20 16:51:33",
+  "n_problems": 540,
+  "git_sha": "c7e5a83",
+  "time": "2026-11-20 17:29:50",
   "python": "3.12.3",
   "versions": {
     "torch": "2.11.0+cu128",
@@ -31,12 +29,8 @@
   "argv": [
     "scripts/01_generate.py",
     "--config",
-    "nowm,kgw_d2,sweet_d2",
-    "--limit",
-    "20",
-    "--tag",
-    "probe_t07",
-    "--temperature",
-    "0.7"
+    "all",
+    "--batch-size",
+    "32"
   ]
 }

@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# GPU detection, queued behind generation: negatives + all generations first,
+# then each config's attacked code once the CPU pipeline has produced it.
+cd /mnt/c/Users/Pedro/Documents/GitHub/aa/NLP_Final_Project
+CFGS="kgw_d2 ewd_d2 unigram_d2 sweet_d2 kgw_d4 ewd_d4 unigram_d4 sweet_d4"
+while pgrep -f 01_generate.py >/dev/null; do sleep 30; done
+echo "$(date +%T) === detect negatives + generations"
+T="neg,gen:nowm"; for c in $CFGS; do T="$T,gen:$c"; done
+bash scripts/wsl_run.sh python scripts/05_detect.py --targets "$T"
+for c in $CFGS; do
+  # attacks for $c are done when the CPU pipeline has moved past it
+  until grep -q "=== .*: attack" logs/cpu_pipeline.log && ! pgrep -af "04_attack.py --config $c" >/dev/null \
+        && [ -f outputs/attacks/$c.jsonl ]; do sleep 30; done
+  echo "$(date +%T) === detect attacks $c"
+  bash scripts/wsl_run.sh python scripts/05_detect.py --targets "atk:$c"
+done
+echo "$(date +%T) DETECT PIPELINE DONE"
