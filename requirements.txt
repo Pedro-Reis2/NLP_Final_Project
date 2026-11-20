@@ -1,0 +1,16 @@
+# Install torch first with the CUDA wheel:
+#   pip install torch --index-url https://download.pytorch.org/whl/cu128
+# Exact versions are pinned in requirements.lock.txt after install (pip freeze).
+torch
+transformers
+accelerate
+markllm
+evalplus
+black
+numpy
+pandas
+scikit-learn
+scipy
+matplotlib
+tqdm
+pytest
