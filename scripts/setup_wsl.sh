@@ -11,6 +11,7 @@ source ~/wm-venv/bin/activate
 pip install -U pip wheel
 pip install torch --index-url https://download.pytorch.org/whl/cu128
 pip install -r "$REPO/requirements.txt"
+pip install --no-deps markllm
 pip freeze > "$REPO/requirements.lock.txt"
 
 grep -q 'HF_HOME' ~/.bashrc || echo 'export HF_HOME=~/hf' >> ~/.bashrc

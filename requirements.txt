@@ -4,7 +4,8 @@
 torch
 transformers
 accelerate
-markllm
+# markllm is installed separately with --no-deps: its pins (Pillow==9.4.0, openai==0.28)
+# do not build on Python 3.12, and the algorithms we use need none of them.
 evalplus
 black
 numpy
