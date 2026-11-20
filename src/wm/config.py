@@ -30,10 +30,18 @@ DECODING = dict(
 
 DATASETS = ("humaneval", "mbpp")
 
-# HumanEval/32 (find_zero): the canonical solution passes all inputs outside
-# the sandbox, but EvalPlus's sandbox fails it before the first test in our
-# WSL setup, for every program. Excluded everywhere -> 163 + 378 = 541 problems.
-EXCLUDED_TASKS = {"HumanEval/32"}
+# Harness artifacts, excluded everywhere -> 163 + 377 = 540 problems:
+# - HumanEval/32 (find_zero): canonical solution passes all inputs outside the
+#   sandbox, but EvalPlus's sandbox fails it before the first test (WSL).
+# - Mbpp/255: canonical solution fails the extended tests after a pure `black`
+#   reformat (resource-heavy inputs; flaky in the sandbox).
+EXCLUDED_TASKS = {"HumanEval/32", "Mbpp/255"}
+
+# Tasks whose extended tests are memory/time heavy: canonical solutions fail
+# them when many test processes run at once (even after pure reformatting with
+# black). Failures on these are re-tested at low parallelism before being recorded.
+RESOURCE_SENSITIVE_TASKS = {"HumanEval/15", "HumanEval/100", "HumanEval/130",
+                            "Mbpp/84", "Mbpp/255", "Mbpp/392", "Mbpp/630"}
 
 
 @dataclass(frozen=True)

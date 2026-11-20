@@ -33,14 +33,15 @@ def load_model():
     return model, tok
 
 
-def run_config(cfg_id, model, tok, problems, batch_size, log, out_root=OUT):
+def run_config(cfg_id, model, tok, problems, batch_size, log, out_root=OUT, decoding=DECODING):
     cfg = GEN_CONFIGS[cfg_id]
     out_path = out_root / "generations" / f"{cfg_id}.jsonl"
     done = done_ids(out_path)
     todo = [p for p in problems if p["id"] not in done]
     log.info(f"[{cfg_id}] {len(done)} done, {len(todo)} to go")
     write_manifest(f"gen_{cfg_id}", {"step": "generate", **cfg.to_dict(), "batch_size": batch_size,
-                                     "stop": STOP, "n_problems": len(problems)})
+                                     "stop": STOP, "n_problems": len(problems),
+                                     "decoding": decoding})
     if not todo:
         return
     wm = load_watermark(cfg, model, tok) if cfg.method else None
@@ -58,13 +59,13 @@ def run_config(cfg_id, model, tok, problems, batch_size, log, out_root=OUT):
             out = model.generate(
                 **enc,
                 logits_processor=procs,
-                do_sample=DECODING["do_sample"],
-                max_new_tokens=DECODING["max_new_tokens"],
+                do_sample=decoding["do_sample"],
+                max_new_tokens=decoding["max_new_tokens"],
                 num_return_sequences=1,
                 stop_strings=[STOP],
                 tokenizer=tok,
                 pad_token_id=tok.pad_token_id,
-                temperature=None, top_p=None, top_k=None,
+                temperature=decoding.get("temperature"), top_p=decoding.get("top_p"), top_k=None,
             )
         dt = time.time() - t0
         new = out[:, enc["input_ids"].shape[1]:]
@@ -78,7 +79,7 @@ def run_config(cfg_id, model, tok, problems, batch_size, log, out_root=OUT):
                 "id": p["id"], "dataset": p["dataset"], "config_id": cfg_id,
                 "raw": text, "code": code,
                 "solution": sanitize_solution(code, p["entry_point"]),
-                "n_new_tokens": int(len(ids)), "hit_max": bool(len(ids) >= DECODING["max_new_tokens"]),
+                "n_new_tokens": int(len(ids)), "hit_max": bool(len(ids) >= decoding["max_new_tokens"]),
                 "batch_time_s": round(dt, 2),
             })
         append_jsonl(out_path, rows)
@@ -97,7 +98,13 @@ def main():
     ap.add_argument("--limit", type=int, default=None, help="first N problems per dataset")
     ap.add_argument("--datasets", default="humaneval,mbpp")
     ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--temperature", type=float, default=None,
+                    help="override decoding: sample with this temperature (top_p 0.95); default = config DECODING")
+    ap.add_argument("--tag", default="", help="test output subfolder, e.g. t02")
     args = ap.parse_args()
+    decoding = dict(DECODING)
+    if args.temperature is not None:
+        decoding.update(do_sample=True, temperature=args.temperature, top_p=0.95)
 
     log = get_logger("generate")
     cfgs = list(GEN_CONFIGS) if args.config == "all" else args.config.split(",")
@@ -108,7 +115,7 @@ def main():
     log.info(f"{len(problems)} problems, configs={cfgs}")
     for c in cfgs:
         run_config(c, model, tok, problems, args.batch_size, log,
-                   out_root=OUT / "test" if args.limit else OUT)
+                   out_root=(OUT / "test" / args.tag) if args.limit else OUT, decoding=decoding)
     log.info("ALL DONE")
 
 

@@ -6,3 +6,4 @@ logs/
 .pytest_cache/
 *.egg-info/
 outputs/**/*_eval_results.json
+outputs/test/

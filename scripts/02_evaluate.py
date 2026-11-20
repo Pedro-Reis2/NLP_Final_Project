@@ -48,9 +48,10 @@ def main():
     ap.add_argument("--canonical", action="store_true")
     ap.add_argument("--test", action="store_true", help="use outputs/test (from --limit runs)")
     ap.add_argument("--limit", type=int, default=None, help="canonical only")
+    ap.add_argument("--tag", default="", help="test subfolder (with --test)")
     args = ap.parse_args()
     log = get_logger("evaluate")
-    root = OUT / "test" if args.test else OUT
+    root = OUT / "test" / args.tag if args.test else OUT
 
     if args.canonical:
         probs = load_problems(["humaneval", "mbpp"], args.limit)

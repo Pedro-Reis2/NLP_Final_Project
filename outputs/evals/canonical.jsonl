@@ -537,5 +537,4 @@
 {"id": "Mbpp/809", "dataset": "mbpp", "config_id": "canonical", "base_status": "pass", "plus_status": "pass", "pass_base": true, "pass_plus": true}
 {"id": "Mbpp/808", "dataset": "mbpp", "config_id": "canonical", "base_status": "pass", "plus_status": "pass", "pass_base": true, "pass_plus": true}
 {"id": "Mbpp/392", "dataset": "mbpp", "config_id": "canonical", "base_status": "pass", "plus_status": "pass", "pass_base": true, "pass_plus": true}
-{"id": "Mbpp/255", "dataset": "mbpp", "config_id": "canonical", "base_status": "pass", "plus_status": "pass", "pass_base": true, "pass_plus": true}
 {"id": "Mbpp/599", "dataset": "mbpp", "config_id": "canonical", "base_status": "pass", "plus_status": "pass", "pass_base": true, "pass_plus": true}
