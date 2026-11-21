@@ -30,7 +30,7 @@ Every step is resumable (appends to a JSONL keyed by id, skips finished ids) and
 |---|---|---|
 | Generate (9 configs) | `01_generate.py --config all` | `outputs/generations/` |
 | Test with EvalPlus | `02_evaluate.py --canonical`, `02_evaluate.py --config all` | `outputs/evals/` |
-| Human negatives (canonical + CodeNet) | `03_negatives.py` | `outputs/negatives/` |
+| Human negatives (canonical + CodeNet) | `03_negatives.py` (needs `data/codenet/Project_CodeNet_Python800.tar.gz`, from the Hugging Face mirror `qiankunmu/Project_CodeNet_Python800_and_Java250`) | `outputs/negatives/` |
 | Attacks + re-test | `04_attack.py --canonical`, `04_attack.py --config all`, `04b_retest.py --kind attacks` | `outputs/attacks/` |
 | Detection z-scores | `05_detect.py --targets ...` | `outputs/detect/` |
 | Tables | `06_analyze.py` | `outputs/tables/*.csv` |
