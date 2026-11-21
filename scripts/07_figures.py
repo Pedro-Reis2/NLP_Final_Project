@@ -32,15 +32,9 @@ ATTACK_LABEL = {"none": "No\nattack", "strip_comments": "Strip\ncomments", "blac
                 "rename_1": "Rename\n1 name", "rename_2": "Rename\n2 names", "rename_all": "Rename\nall names",
                 "deadcode_try": "Dead code +\ntry/except"}
 # "Without comments" condition: comments + docstrings stripped first, then the attack
-NC_LABEL = {"strip_comments": "Comments
-stripped", "nc_black": "+ black
-", "nc_rename_1": "+ rename
-1 name",
-            "nc_rename_2": "+ rename
-2 names", "nc_rename_all": "+ rename
-all names",
-            "nc_deadcode_try": "+ dead code,
-try/except"}
+NC_LABEL = {"strip_comments": "Comments\nstripped", "nc_black": "+ black\n", "nc_rename_1": "+ rename\n1 name",
+            "nc_rename_2": "+ rename\n2 names", "nc_rename_all": "+ rename\nall names",
+            "nc_deadcode_try": "+ dead code,\ntry/except"}
 DET_ORDER = ["KGW", "EWD-unweighted", "EWD", "Unigram", "SWEET"]
 
 plt.rcParams.update({

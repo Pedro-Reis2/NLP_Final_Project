@@ -111,6 +111,39 @@ Mean fraction of Qwen tokens changed (difflib on token ids, averaged over config
 - EWD keeps the highest TPR under every attack at δ=4 (ignoring the Unigram dead-code artifact below) and under every attack except dead code at δ=2, where all detectors are ≤ 6%.
 - **Artifact (Unigram + dead code)**: dead code *raises* Unigram TPR (34 → 41 at δ=4; 1.1 → 3.2 at δ=2). The three dead-code templates are fixed token strings, and Unigram's green list does not depend on context, so the same inserted tokens shift every sample's z in the same direction. This is a property of fixed-template attacks against a fixed green list, not robustness. (The same issue affected an earlier renaming attack that used `var_N` names; it was replaced by per-sample names, see Sanity checks.)
 
+### Without comments
+Each attack is also applied after comments and docstrings are stripped (`nc_*` rows in `attacks.csv`). Each `nc_X` uses the same per-sample new names and dead code as `X`, so the pair differs only in the comments. Figures: `figures/fig_tpr_attacks_nocomments_d{2,4}.{png,pdf}`.
+- **Baseline**: the same programs with comments stripped and no other attack (`TPR_stripped_same_tasks`).
+- **Survival**: 100% for every combined attack and config. The 2,610 combined-attack variants of the canonical solutions also all pass.
+- **Tokens changed** (vs the original, including the stripped comments): 0.46–0.85.
+
+TPR @ 1% FPR (%), comments stripped → comments stripped + attack, **δ=4**:
+
+| Detector | + black | + rename 1 | + rename 2 | + rename all | + dead code + try |
+|---|---|---|---|---|---|
+| KGW | 5.1 → 2.8 | 5.2 → 4.8 | 5.2 → 2.9 | 5.2 → 1.0 | 5.2 → 3.3 |
+| EWD-unweighted | 9.1 → 5.6 | 9.0 → 5.5 | 9.0 → 4.0 | 9.0 → 1.5 | 9.0 → 1.0 |
+| EWD | 24.7 → 17.7 | 24.5 → 16.0 | 24.5 → 10.0 | 24.5 → 5.0 | 24.5 → 1.5 |
+| Unigram | 3.2 → 1.9 | 3.1 → 3.1 | 3.1 → 1.2 | 3.1 → 0.0 | 3.1 → 6.9 |
+| SWEET | 9.4 → 6.9 | 9.4 → 5.1 | 9.4 → 3.0 | 9.4 → 1.7 | 9.4 → 0.0 |
+
+**δ=2**:
+
+| Detector | + black | + rename 1 | + rename 2 | + rename all | + dead code + try |
+|---|---|---|---|---|---|
+| KGW | 1.2 → 1.2 | 1.4 → 1.4 | 1.4 → 1.0 | 1.4 → 0.0 | 1.4 → 0.0 |
+| EWD-unweighted | 2.7 → 1.4 | 2.6 → 1.7 | 2.6 → 1.0 | 2.6 → 0.7 | 2.6 → 0.7 |
+| EWD | 9.2 → 6.1 | 8.9 → 5.9 | 8.9 → 2.6 | 8.9 → 2.3 | 8.9 → 0.0 |
+| Unigram | 1.2 → 0.8 | 1.4 → 0.7 | 1.4 → 0.4 | 1.4 → 0.0 | 1.4 → 1.8 |
+| SWEET | 4.9 → 4.2 | 4.7 → 4.7 | 4.7 → 1.6 | 4.7 → 1.6 | 4.7 → 0.0 |
+
+**Findings (without comments).**
+- **On code without comments, no method is usable.** After stripping alone, the best detector (EWD δ=4) detects 24.5%, and every other configuration detects at most 9.4%.
+- **Two cheap, behaviour-preserving edits erase the watermark.** Stripping comments and then renaming all identifiers leaves every method at **≤ 5% TPR at δ=4 and ≤ 2.3% at δ=2**. Stripping followed by dead code leaves every method except Unigram at ≤ 3.3%.
+- **Without comments, the same attacks remove a much larger share of what remains.** Renaming all names keeps 82% of EWD δ=4 detections when comments are present (71.0 → 58.0) but only 20% once they are gone (24.5 → 5.0). KGW goes from 63% (34.8 → 21.9) to 19% (5.2 → 1.0). With comments gone, identifiers are the main remaining high-entropy tokens, so renaming them hits the watermark directly.
+- `black` and renaming a single name still matter least.
+- The Unigram dead-code artifact persists: dead code raises Unigram from 3.1% to 6.9% at δ=4 (from 1.4% to 1.8% at δ=2).
+
 ## QP3: TPR by code length
 `outputs/tables/length.csv`, `outputs/tables/min_length.csv`; figures `figures/fig_tpr_length_d2.{png,pdf}`, `figures/fig_tpr_length_d4.{png,pdf}`. Length = Qwen tokens of the scored (sanitized) code; all 540 generations, unattacked; bins with n ≥ 10.
 
