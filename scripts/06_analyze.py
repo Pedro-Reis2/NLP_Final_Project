@@ -35,7 +35,12 @@ LEN_BINS = [0, 75, 100, 125, 150, 200, 300, 10_000]
 
 def zfile(root, det, target):
     df = pd.DataFrame(read_jsonl(root / "detect" / det / f"{target.replace(':', '__')}.jsonl"))
-    return df if df.empty else df.dropna(subset=["z"])
+    # z is NaN when a detector has nothing to score (e.g. EWD on a 2-token
+    # generation whose entropy weights are all 0). Count those as "not detected"
+    # rather than dropping them, so they stay in TPR/FPR denominators.
+    if not df.empty:
+        df["z"] = df["z"].fillna(-1e9)
+    return df
 
 
 def emp_threshold(neg_z: np.ndarray) -> float:

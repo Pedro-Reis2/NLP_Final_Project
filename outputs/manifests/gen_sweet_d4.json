@@ -1,0 +1,36 @@
+{
+  "step": "generate",
+  "config_id": "sweet_d4",
+  "method": "SWEET",
+  "delta": 4,
+  "gamma": 0.5,
+  "hash_key": 15485863,
+  "seed": 42,
+  "extra": {},
+  "decoding": {
+    "do_sample": false,
+    "max_new_tokens": 512,
+    "num_return_sequences": 1
+  },
+  "model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "batch_size": 32,
+  "stop": "\n```",
+  "n_problems": 540,
+  "git_sha": "db12129",
+  "time": "2026-11-20 19:14:22",
+  "python": "3.12.3",
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.23.0",
+    "markllm": "0.1.5",
+    "evalplus": "0.3.1",
+    "black": "26.10.1"
+  },
+  "argv": [
+    "scripts/01_generate.py",
+    "--config",
+    "all",
+    "--batch-size",
+    "32"
+  ]
+}
