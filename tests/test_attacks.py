@@ -87,11 +87,13 @@ def test_strip_comments_noop_without_comments():
 
 def test_rename_counts():
     src = SAMPLES[0]
-    one = rename(src, 1)
-    assert "var_0" in one and "var_1" not in one
-    two = rename(src, 2)
-    assert "var_1" in two and "var_2" not in two
-    allr = strip_comments(rename(src, None))
+    names = ("numbers", "threshold", "idx", "elem", "distance")
+    def kept(out):
+        body = strip_comments(out).replace("has_close_elements", "")
+        return sum(n in body for n in names)
+    assert kept(rename(src, 1, "t")) == len(names) - 1
+    assert kept(rename(src, 2, "t")) == len(names) - 2
+    allr = strip_comments(rename(src, None, "t"))
     for name in ("numbers", "threshold", "idx", "elem", "distance"):
         assert name not in allr.replace("has_close_elements", "")
 
@@ -99,10 +101,17 @@ def test_rename_counts():
 def test_rename_skips_keyword_param():
     # `key` is used as a keyword argument, so it must not be renamed
     out = rename(SAMPLES[1], None)
-    assert "key=key" in out or "key=var_" in out
+    assert "key=" in out
     assert "def f(" in out and "key=None" in out
 
 
 def test_deadcode_changes_text():
     out = apply_attack("deadcode_try", SAMPLES[0], salt="t")
     assert "try:" in out and out != SAMPLES[0]
+
+
+def test_rename_names_vary_by_sample():
+    a, b = rename(SAMPLES[0], None, "task/1"), rename(SAMPLES[0], None, "task/2")
+    assert a != b
+    assert rename(SAMPLES[0], None, "task/1") == a  # deterministic
+    assert "var_" not in a

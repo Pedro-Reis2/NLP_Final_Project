@@ -19,8 +19,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from transformers import AutoTokenizer  # noqa: E402
-
 from wm.attacks import ATTACKS, AttackError, apply_attack  # noqa: E402
 from wm.config import GEN_CONFIGS, MODEL_ID, OUT  # noqa: E402
 from wm.data import human_solution, load_problems  # noqa: E402
@@ -89,6 +87,11 @@ def main():
     ap.add_argument("--limit", type=int, default=None)
     args = ap.parse_args()
     log = get_logger("attack")
+    # Imported here, not at module level: EvalPlus test workers are spawned and
+    # re-import this module; a top-level transformers import pulls in torch
+    # (~5.6 GB virtual memory), which counts against EvalPlus's 8 GB RLIMIT_AS
+    # in every forked test process and made correct programs fail.
+    from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(MODEL_ID)
     root = OUT / "test" / args.tag if args.test else OUT
 

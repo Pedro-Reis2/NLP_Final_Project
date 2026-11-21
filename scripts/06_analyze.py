@@ -160,7 +160,8 @@ def main():
             for a in ATTACKS:
                 sub = atk[atk.attack == a]
                 n_orig = len(sub)  # originals that passed plus tests
-                valid = sub[(sub.status == "ok") & (sub.pass_plus == True)]  # noqa: E712
+                applied = sub[sub.status == "ok"]  # attack changed the code (not n/a, not a no-op)
+                valid = applied[applied.pass_plus == True]  # noqa: E712
                 valid = valid[valid.id.isin(za.index)]
                 if valid.empty:
                     continue
@@ -168,7 +169,9 @@ def main():
                 z_orig = zg.loc[zg.index.intersection(valid.task_id), "z"].to_numpy()
                 arows.append({
                     "config_id": c, "method": m, "delta": GEN_CONFIGS[c].delta, "detector": d, "attack": a,
-                    "n_passing_orig": n_orig, "n_valid": len(valid), "survival": len(valid) / max(1, n_orig),
+                    "n_passing_orig": n_orig, "n_applied": len(applied), "n_valid": len(valid),
+                    # survival = attacked code still passes the plus tests, among samples the attack changed
+                    "survival": len(valid) / max(1, len(applied)),
                     "TPR_orig_same_tasks": (z_orig > thr[d]).mean(), "TPR_attacked": (z_att > thr[d]).mean(),
                     "AUROC_attacked": auroc(z_att, negz[d]), "mean_z_orig": z_orig.mean(),
                     "mean_z_attacked": z_att.mean(), "mean_frac_tok_changed": valid.frac_tok_changed.mean(),

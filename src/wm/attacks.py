@@ -18,6 +18,7 @@ import builtins
 import hashlib
 import io
 import keyword
+import random
 import tokenize
 
 ATTACKS = ["strip_comments", "black", "rename_1", "rename_2", "rename_all", "deadcode_try"]
@@ -143,8 +144,39 @@ def _rename_candidates(tree: ast.Module) -> list[str]:
     return sorted(seen, key=lambda n: seen[n])
 
 
-def rename(src: str, k: int | None) -> str:
-    """Rename the first k eligible identifiers (k=None → all)."""
+# Pool for replacement names. Each sample draws its own names (seeded by its
+# task id), so no fixed token sequence (like "var_" + digit) repeats across all
+# samples: with a fixed template, whether those few token pairs happen to be
+# green shifts every sample's z the same way, so the "attack" raised KGW z.
+_NAME_WORDS = (
+    "item value data result count total index node entry key buffer acc temp "
+    "current prev left right start end size length num part chunk piece token "
+    "record element source target output input state flag limit step offset "
+    "pos row col cell group batch block level score weight cost rate base head "
+    "tail first last low high mid span window queue stack seen found best curr "
+    "sum prod diff ratio pair bucket slot field label name word text line char "
+    "digit bit mask shift power factor term coeff root leaf edge path graph tree "
+    "seq arr vec mat grid table store cache pool list items values keys parts"
+).split()
+
+
+def _new_names(n: int, taken: set[str], salt: str) -> list[str]:
+    rng = random.Random(int(hashlib.md5(("rename|" + salt).encode()).hexdigest(), 16))
+    out, used = [], set(taken) | _FORBIDDEN_NAMES
+    while len(out) < n:
+        a, b = rng.choice(_NAME_WORDS), rng.choice(_NAME_WORDS)
+        cand = a if rng.random() < 0.4 else f"{a}_{b}"
+        if cand not in used and a != b:
+            used.add(cand)
+            out.append(cand)
+    return out
+
+
+_FORBIDDEN_NAMES = set(keyword.kwlist) | set(dir(builtins))
+
+
+def rename(src: str, k: int | None, salt: str = "") -> str:
+    """Rename the first k eligible identifiers (k=None → all) to per-sample random names."""
     tree = _parse(src)
     cands = _rename_candidates(tree)
     if not cands:
@@ -152,12 +184,8 @@ def rename(src: str, k: int | None) -> str:
     targets = cands if k is None else cands[:k]
     all_names = {n.id for n in ast.walk(tree) if isinstance(n, ast.Name)} | {
         n.arg for n in ast.walk(tree) if isinstance(n, ast.arg)}
-    mapping, i = {}, 0
-    for t in targets:
-        while f"var_{i}" in all_names:
-            i += 1
-        mapping[t] = f"var_{i}"
-        i += 1
+    # draw names for *all* candidates so rename_1 ⊂ rename_2 ⊂ rename_all use the same names
+    mapping = dict(zip(targets, _new_names(len(cands), all_names, salt)))
     # collect exact positions (line, byte col) of every occurrence
     edits = []  # (line, char_col, old, new)
     lines = _lines(src)
@@ -265,11 +293,11 @@ def apply_attack(name: str, src: str, salt: str = "") -> str:
     if name == "black":
         return black_format(src)
     if name == "rename_1":
-        return rename(src, 1)
+        return rename(src, 1, salt)
     if name == "rename_2":
-        return rename(src, 2)
+        return rename(src, 2, salt)
     if name == "rename_all":
-        return rename(src, None)
+        return rename(src, None, salt)
     if name == "deadcode_try":
         return deadcode_try(src, salt)
     raise ValueError(name)
