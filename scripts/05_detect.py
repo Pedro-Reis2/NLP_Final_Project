@@ -4,6 +4,7 @@ Targets:
   neg                    human negatives (outputs/negatives/negatives.jsonl, field `code`)
   gen:<config_id>        generations (field `solution`)
   atk:<config_id>        attacked generations (outputs/attacks/<config_id>.jsonl, field `attacked`)
+  rw:<config_id>         LLM rewrites (outputs/rewrite/<config_id>.jsonl, field `attacked`)
 
 Detectors per target: for watermarked configs, DETECTORS_FOR[method]; for `neg`
 and `gen:nowm`, every detector (they are the negatives / unwatermarked control).
@@ -32,7 +33,7 @@ from wm.io import append_jsonl, done_ids, get_logger, read_jsonl, write_manifest
 from wm.markllm_utils import load_watermark  # noqa: E402
 
 ALL_DETECTORS = ["KGW", "EWD", "EWD-unweighted", "Unigram", "SWEET"]
-FIELD = {"neg": "code", "gen": "solution", "atk": "attacked"}
+FIELD = {"neg": "code", "gen": "solution", "atk": "attacked", "rw": "attacked"}
 
 
 def target_rows(target: str, root: Path):
@@ -43,6 +44,8 @@ def target_rows(target: str, root: Path):
         rows = read_jsonl(root / "generations" / f"{cfg}.jsonl")
     elif kind == "atk":
         rows = [r for r in read_jsonl(root / "attacks" / f"{cfg}.jsonl") if r.get("attacked")]
+    elif kind == "rw":  # LLM-rewrite sample (scripts/10_llm_rewrite.py)
+        rows = [r for r in read_jsonl(root / "rewrite" / f"{cfg}.jsonl") if r.get("attacked")]
     else:
         raise ValueError(target)
     return [{"id": r["id"], "text": r[FIELD[kind]]} for r in rows]

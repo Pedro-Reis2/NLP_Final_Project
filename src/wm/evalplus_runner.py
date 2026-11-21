@@ -53,6 +53,32 @@ def run_tests(items: list[dict], n_workers: int | None = None, progress: bool = 
 RETRY_TIME_FACTOR = 20.0
 
 
+def run_custom(items: list[dict], n_workers: int | None = None) -> list[dict]:
+    """Like run_tests, but each item brings its own "plus" set: keys plus_inputs, plus_expected,
+    plus_time (expected outputs and timings from EvalPlus's trusted_exec on the canonical
+    solution). Base inputs and their ground truth are EvalPlus's own. Used for differential
+    testing on fresh inputs (scripts/13_differential.py)."""
+    n_workers = n_workers or max(1, mp.cpu_count() // 2)
+    out = []
+    with ProcessPoolExecutor(max_workers=n_workers, mp_context=mp.get_context("spawn")) as ex:
+        futs = {}
+        for it in items:
+            ds = it["dataset"]
+            prob = dict(raw_problems(ds)[it["task_id"]], plus_input=it["plus_inputs"])
+            gt = groundtruth(ds)[it["task_id"]]
+            expected = {"base": gt["base"], "base_time": gt["base_time"],
+                        "plus": it["plus_expected"], "plus_time": it["plus_time"]}
+            args = (ds, 0, prob, it["solution"], expected, False, True,
+                    it["key"], DEFAULT_MIN_TIME_LIMIT, DEFAULT_GT_TIME_LIMIT_FACTOR)
+            futs[ex.submit(check_correctness, *args)] = it["key"]
+        for f in as_completed(futs):
+            r = f.result()
+            b, p = r["base"][0], r["plus"][0]
+            out.append({"key": futs[f], "base_status": b, "plus_status": p,
+                        "pass_base": b == PASS, "pass_plus": b == PASS and p == PASS})
+    return out
+
+
 def _run(items: list[dict], n_workers: int | None, progress: bool,
          time_factor: float = DEFAULT_GT_TIME_LIMIT_FACTOR) -> list[dict]:
     n_workers = n_workers or max(1, mp.cpu_count() // 2)
