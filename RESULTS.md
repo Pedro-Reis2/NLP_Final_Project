@@ -200,6 +200,51 @@ The text AUROC vs human text is 0.996–1.000. Unwatermarked Qwen text is above 
   - "Fraction of tokens changed" puts them on one axis, but the comparison is about how much signal survives per edit, not about attack strength.
   - Greedy decoding loops on some news prefixes: 2–13% of text generations have a distinct-word ratio below 0.3 (`frac_repetitive`). Excluding them leaves TPR unchanged (`TPR_nonrepetitive` 99–100%) and lowers the KGW false-positive rate on unwatermarked Qwen text from 3.0% to 1.7%.
 
+## Uncertainty (bootstrap 95% CIs)
+`scripts/09_uncertainty.py` → `outputs/tables/ci_pass_at_1.csv`, `ci_detection.csv`, `ci_attacks.csv`. It uses a percentile bootstrap with 2,000 resamples and seed 42.
+- pass@1 resamples problems. The intervals are paired, so each config's drop is computed on the same resampled problem ids as the baseline.
+- TPR resamples both the human negatives (re-estimating the 1% threshold each time) and the watermarked texts, so the threshold's own uncertainty is included.
+- Attack changes are paired on the same tasks before and after the attack.
+
+**pass@1 drop vs no watermark (points, [95% CI])**:
+
+| Config | Original tests | Extended tests | Extra drop on extended tests |
+|---|---|---|---|
+| KGW δ=2 | 3.1 [−0.7, 7.0] | 3.5 [0.0, 7.0] | 0.4 [−2.0, 2.8] |
+| EWD δ=2 | 3.0 [−0.7, 6.9] | 0.7 [−2.8, 4.3] | −2.2 [−4.8, 0.2] |
+| Unigram δ=2 | 2.6 [−1.3, 6.5] | 4.1 [0.4, 7.8] | 1.5 [−1.1, 4.1] |
+| SWEET δ=2 | −2.8 [−6.5, 0.9] | −2.2 [−5.9, 1.1] | 0.6 [−2.0, 3.0] |
+| KGW δ=4 | 19.8 [15.4, 24.1] | 18.0 [13.7, 22.0] | −1.9 [−4.6, 0.9] |
+| EWD δ=4 | 23.7 [19.3, 28.5] | 19.8 [15.4, 24.3] | −3.9 [−6.5, −1.3] |
+| Unigram δ=4 | 29.3 [24.6, 33.9] | 27.2 [22.8, 31.7] | −2.0 [−4.6, 0.6] |
+| SWEET δ=4 | 2.2 [−1.9, 6.1] | 1.9 [−2.4, 5.9] | −0.4 [−3.0, 2.0] |
+
+- **At δ=2 the cost in correctness is statistically indistinguishable from zero.** The exceptions are Unigram on the extended tests (4.1, CI excludes 0) and KGW on the extended tests (3.5, CI touches 0). SWEET's apparent gain is also within noise.
+- **At δ=4, SWEET's drop is not significant.** KGW, EWD and Unigram lose 18–29 points, all clearly significant.
+- **QP1 confirmed:** the extra drop revealed by the extended tests includes 0 for 7 of 8 configs. For EWD δ=4 the extended tests show a significantly *smaller* drop. The original tests do not underestimate the watermark's damage.
+
+**TPR @ 1% FPR, all generations [95% CI]**:
+- δ=2: KGW 9.6 [5.6, 15.2], EWD 38.0 [28.1, 43.1], EWD-unweighted 13.1 [6.5, 16.7], Unigram 4.4 [2.0, 7.0], SWEET 20.7 [14.8, 28.0].
+- δ=4: KGW 49.6 [43.5, 56.1], EWD 79.3 [73.3, 83.1], EWD-unweighted 61.3 [53.9, 67.6], Unigram 56.1 [41.9, 62.4], SWEET 43.3 [35.7, 49.8].
+- The intervals are wide (often ±5–10 points) mostly because the 1% threshold rests on the top 15 of 1,540 negatives.
+- **Entropy weighting is significant:** EWD − EWD-unweighted on the same texts is +24.8 [15.4, 32.6] points at δ=2 and +18.0 [10.9, 25.6] at δ=4.
+
+**Attacks** (`ci_attacks.csv`, change in TPR on the same tasks):
+- Comment stripping is significant for every config except Unigram δ=2, which is already at about 1%.
+- With comments present, `black` and renaming a single identifier are mostly not significant. The exceptions:
+  - `black`: EWD at both δ, EWD-unweighted δ=4, Unigram δ=4.
+  - Renaming one name: EWD δ=2, EWD-unweighted δ=4, Unigram δ=4.
+- Without comments, all five combined attacks significantly lower EWD at δ=4 relative to the stripped code. They range from `black` (−7 [−12, −3] points) to rename all (−20 [−26, −12]) and dead code (−23 [−30, −15]).
+- The Unigram dead-code increase is borderline (+6 [0, +11] at δ=4).
+
+## Trade-off: pass@1 vs detection
+`figures/fig_tradeoff_pass_tpr.{png,pdf}`: pass@1 on the extended tests vs TPR @ 1% FPR, one line per method from δ=2 to δ=4, with 95% CIs on both axes. The shaded band is the no-watermark pass@1 CI.
+- **No configuration combines baseline-level correctness with more than 50% detection.**
+  - Inside the no-watermark band: every δ=2 config and SWEET δ=4. The best of them detects 43% (SWEET δ=4), then EWD δ=2 (38%).
+  - EWD δ=4 is the only one near 80% TPR, and it pays about 20 points of pass@1.
+- **Each method trades differently.** EWD buys the most detection per point of pass@1 lost. Unigram buys the least: at δ=4 it costs 27 points for 56% TPR. SWEET barely moves on either axis between δ=2 and δ=4.
+- EWD δ=2 and SWEET δ=4 land on almost the same point (about 40% TPR, 55–56% pass@1).
+
 ## Sanity checks
 - **Test harness**: all 541 canonical solutions pass both original and extended tests (163 HumanEval+, 378 MBPP+; `outputs/evals/canonical.jsonl`).
   - EvalPlus's default 4 GB address-space cap made 6 canonical solutions fail on the heaviest extended inputs (HumanEval/15, 100, 130; Mbpp/84, 255, 392). Raised to 8 GB (`EVALPLUS_MAX_MEMORY_BYTES`, `scripts/wsl_run.sh`).

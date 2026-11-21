@@ -146,6 +146,40 @@ def fig_attacks_nc(atk, delta, out):
     save(fig, f"fig_tpr_attacks_nocomments_d{int(delta)}", out)
 
 
+def fig_tradeoff(t, out):
+    """pass@1 (extended tests) vs TPR@1%FPR per method, delta 2 -> 4, with bootstrap 95% CIs
+    (needs ci_pass_at_1.csv and ci_detection.csv from 09_uncertainty.py)."""
+    p = pd.read_csv(t / "ci_pass_at_1.csv").set_index("config_id")
+    d = pd.read_csv(t / "ci_detection.csv")
+    d = d[d.detector == d.method]  # EWD configs: the entropy-weighted EWD detector
+    fig, ax = plt.subplots(figsize=(5.2, 3.4))
+    base = p.loc["nowm"]
+    ax.axhspan(base.plus_lo * 100, base.plus_hi * 100, color=COLOR["none"], alpha=0.12, lw=0)
+    ax.axhline(base["pass@1_plus"] * 100, color=COLOR["none"], lw=1, ls=(0, (4, 3)))
+    ax.text(101, base["pass@1_plus"] * 100, "No\nwatermark", va="center", ha="left", fontsize=8, color=INK2)
+    for m in ["KGW", "EWD", "Unigram", "SWEET"]:
+        s = d[d.method == m].sort_values("delta")
+        if s.empty:
+            continue
+        x = s["TPR@1%FPR"].to_numpy() * 100
+        y = np.array([p.loc[c, "pass@1_plus"] for c in s.config_id]) * 100
+        xerr = np.vstack([x - s.lo * 100, s.hi * 100 - x])
+        ylo = np.array([p.loc[c, "plus_lo"] for c in s.config_id]) * 100
+        yhi = np.array([p.loc[c, "plus_hi"] for c in s.config_id]) * 100
+        ax.errorbar(x, y, xerr=xerr, yerr=np.vstack([y - ylo, yhi - y]), color=COLOR[m], lw=2, elinewidth=1,
+                     capsize=0, marker="o", ms=6, markeredgecolor=SURFACE, markeredgewidth=1.5, label=m, zorder=3)
+        # label offsets (points) chosen so neighbouring labels do not collide
+        nudge = {("Unigram", 2): (-8, -14), ("EWD", 2): (-30, -14), ("SWEET", 4): (8, 4)}
+        for xi, yi, dl in zip(x, y, s.delta):
+            ax.annotate(f"δ={int(dl)}", (xi, yi), textcoords="offset points", xytext=nudge.get((m, int(dl)), (6, 5)),
+                        fontsize=7.5, color=INK2)
+    ax.set_xlim(0, 100)
+    ax.set_xlabel("TPR at 1% FPR (%), all generations")
+    ax.set_ylabel("pass@1 (%), extended tests")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=4)
+    save(fig, "fig_tradeoff_pass_tpr", out)
+
+
 def fig_length(ln, det, delta, out):
     cfg_of = det[det.delta == delta][["config_id", "detector"]]
     d = ln.merge(cfg_of, on=["config_id", "detector"])
@@ -182,6 +216,8 @@ def main():
     p1, det, atk, ln = rd("pass_at_1.csv"), rd("detection.csv"), rd("attacks.csv"), rd("length.csv")
     fig_pass(p1, out)
     tex_pass(p1, out)
+    if (t / "ci_pass_at_1.csv").exists() and (t / "ci_detection.csv").exists():
+        fig_tradeoff(t, out)
     for delta in sorted(det.delta.dropna().unique()) if not det.empty else []:
         if not atk.empty:
             fig_attacks(atk, det, delta, out)

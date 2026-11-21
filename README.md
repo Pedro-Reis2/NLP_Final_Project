@@ -34,6 +34,7 @@ Every step is resumable (appends to a JSONL keyed by id, skips finished ids) and
 | Attacks + re-test | `04_attack.py --canonical`, `04_attack.py --config all`, `04b_retest.py --kind attacks` | `outputs/attacks/` |
 | Detection z-scores | `05_detect.py --targets ...` | `outputs/detect/` |
 | Tables | `06_analyze.py` | `outputs/tables/*.csv` |
+| Confidence intervals (bootstrap) | `09_uncertainty.py` (run before `07_figures.py`, which draws the trade-off figure from it) | `outputs/tables/ci_*.csv` |
 | Figures | `07_figures.py` | `figures/` |
 | QP4 text study | `08_text_qp4.py all` (needs `data/c4/processed_c4.json` from the MarkLLM repo) | `outputs/qp4/`, `outputs/tables/qp4_*.csv` |
 
