@@ -43,6 +43,13 @@ def zfile(root, det, target):
     return df
 
 
+def zmean(z) -> float:
+    """Mean z over scorable texts (excludes the -1e9 "not detected" fill)."""
+    z = np.asarray(z, dtype=float)
+    z = z[z > -1e8]
+    return float(z.mean()) if len(z) else np.nan
+
+
 def emp_threshold(neg_z: np.ndarray) -> float:
     """Smallest threshold t with mean(neg > t) <= FPR."""
     s = np.sort(neg_z)
@@ -97,7 +104,7 @@ def main():
             continue
         negz[d] = neg.z.to_numpy()
         thr[d] = emp_threshold(negz[d])
-        trows.append({"detector": d, "n_neg": len(neg), "neg_mean_z": negz[d].mean(), "neg_sd_z": negz[d].std(),
+        trows.append({"detector": d, "n_neg": len(neg), "neg_mean_z": zmean(negz[d]), "neg_sd_z": negz[d][negz[d] > -1e8].std(),
                       "neg_frac_gt_2.326": (negz[d] > Z_ANALYTIC).mean(), "threshold_1pct": thr[d]})
     pd.DataFrame(trows).to_csv(tdir / "thresholds.csv", index=False)
 
@@ -119,7 +126,7 @@ def main():
             pp = pos[pos.id.isin(passing)]
             drows.append({
                 "config_id": c, "method": m, "delta": GEN_CONFIGS[c].delta, "detector": d,
-                "n": len(pos), "mean_z": pos.z.mean(), "median_tokens": pos.n_tokens.median(),
+                "n": len(pos), "mean_z": zmean(pos.z), "median_tokens": pos.n_tokens.median(),
                 "TPR@1%FPR": (pos.z > thr[d]).mean(), "TPR@z2.326": (pos.z > Z_ANALYTIC).mean(),
                 "AUROC": auroc(pos.z, negz[d]),
                 "n_passing": len(pp), "TPR@1%FPR_passing": (pp.z > thr[d]).mean() if len(pp) else np.nan,
@@ -173,8 +180,8 @@ def main():
                     # survival = attacked code still passes the plus tests, among samples the attack changed
                     "survival": len(valid) / max(1, len(applied)),
                     "TPR_orig_same_tasks": (z_orig > thr[d]).mean(), "TPR_attacked": (z_att > thr[d]).mean(),
-                    "AUROC_attacked": auroc(z_att, negz[d]), "mean_z_orig": z_orig.mean(),
-                    "mean_z_attacked": z_att.mean(), "mean_frac_tok_changed": valid.frac_tok_changed.mean(),
+                    "AUROC_attacked": auroc(z_att, negz[d]), "mean_z_orig": zmean(z_orig),
+                    "mean_z_attacked": zmean(z_att), "mean_frac_tok_changed": valid.frac_tok_changed.mean(),
                 })
     pd.DataFrame(arows).to_csv(tdir / "attacks.csv", index=False)
 

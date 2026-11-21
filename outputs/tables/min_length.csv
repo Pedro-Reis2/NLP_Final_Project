@@ -1,0 +1,11 @@
+config_id,detector,min_tokens_TPR80
+kgw_d2,KGW,
+ewd_d2,EWD,
+ewd_d2,EWD-unweighted,
+unigram_d2,Unigram,
+sweet_d2,SWEET,
+kgw_d4,KGW,200.0
+ewd_d4,EWD,75.0
+ewd_d4,EWD-unweighted,300.0
+unigram_d4,Unigram,150.0
+sweet_d4,SWEET,

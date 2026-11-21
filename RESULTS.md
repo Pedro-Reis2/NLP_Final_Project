@@ -23,16 +23,113 @@ Unwatermarked baseline (`outputs/evals/nowm.jsonl`):
 
 Published EvalPlus leaderboard numbers for this model are 70.7/66.5 (HumanEval) and 69.2/59.4 (MBPP); ours are 3–6 points lower. Likely causes: our 512-token cap, stopping rule and sanitize step. The gap applies equally to every config, so watermark-vs-baseline differences are unaffected.
 
-_Watermarked configs: TBD._
+All configs (`outputs/tables/pass_at_1.csv`; figure `figures/fig_pass_at_1.{png,pdf}`, LaTeX `figures/pass_at_1.tex`). pass@1 in %, all 540 problems; Δ = drop vs. no watermark (positive = worse).
+
+| Config | original | extended | gap (orig − ext) | Δ original | Δ extended |
+|---|---|---|---|---|---|
+| No watermark | 65.6 | 56.9 | 8.7 | – | – |
+| KGW δ=2 | 62.4 | 53.3 | 9.1 | 3.1 | 3.5 |
+| EWD δ=2 | 62.6 | 56.1 | 6.5 | 3.0 | 0.7 |
+| Unigram δ=2 | 63.0 | 52.8 | 10.2 | 2.6 | 4.1 |
+| SWEET δ=2 | 68.3 | 59.1 | 9.3 | −2.8 | −2.2 |
+| KGW δ=4 | 45.7 | 38.9 | 6.9 | 19.8 | 18.0 |
+| EWD δ=4 | 41.9 | 37.0 | 4.8 | 23.7 | 19.8 |
+| Unigram δ=4 | 36.3 | 29.6 | 6.7 | 29.3 | 27.2 |
+| SWEET δ=4 | 63.3 | 55.0 | 8.3 | 2.2 | 1.9 |
+
+Per dataset (original / extended): HumanEval+ — nowm 67.5/60.7, KGW2 62.6/55.8, EWD2 62.0/57.1, Uni2 64.4/55.2, SWEET2 70.6/62.6, KGW4 40.5/33.7, EWD4 43.6/39.9, Uni4 35.0/30.1, SWEET4 65.6/60.1. MBPP+ — nowm 64.7/55.2, KGW2 62.3/52.3, EWD2 62.9/55.7, Uni2 62.3/51.7, SWEET2 67.4/57.6, KGW4 48.0/41.1, EWD4 41.1/35.8, Uni4 36.9/29.4, SWEET4 62.3/52.8.
+
+**Findings (QP1).**
+- δ=2 costs little: 2.6–3.1 points with the original tests and 0.7–4.1 with the extended tests. SWEET δ=2 is *above* the baseline (+2.8/+2.2): biasing only high-entropy tokens leaves syntax-critical, low-entropy tokens alone. With n=540 a ±3-point difference is within noise (one problem = 0.19 points), so read it as "no measurable cost".
+- δ=4 is destructive for the methods that bias every token: −20 (KGW), −24 (EWD), −29 (Unigram) points. SWEET δ=4 loses only ~2 points: entropy gating is what makes a strong watermark compatible with code.
+- **The original tests do not hide extra watermark damage.** The original-vs-extended gap is 8.7 points for the baseline and 4.8–10.2 for watermarked configs, i.e. the extended tests lower every config by a similar amount. The drop measured with the extended tests is within 4 points of the drop measured with the original tests for every config, and for 5 of 8 configs (all four δ=4 configs and EWD δ=2) it is *smaller*; KGW δ=2, Unigram δ=2 and SWEET δ=2 show a slightly larger drop with the extended tests (+0.4, +1.5, +0.6 points). The answer to "how much do the original tests underestimate the damage?" is: they do not, in this setting; if anything they slightly overstate it. The strong δ=4 configs even have a *smaller* gap, because the problems they still solve are the easier ones.
 
 ## Detection without attacks (TPR @ 1% FPR, AUROC)
-_TBD_
+Thresholds (`outputs/tables/thresholds.csv`), set on 1,540 human negatives:
+
+| Detector | neg mean z | neg sd z | neg frac > 2.326 | empirical threshold (1% FPR) |
+|---|---|---|---|---|
+| KGW | 0.28 | 1.19 | 3.8% | 2.95 |
+| EWD-unweighted | 0.03 | 1.34 | 2.5% | 2.83 |
+| EWD | −0.06 | 1.03 | 0.7% | 2.21 |
+| Unigram | −0.31 | 1.42 | 2.5% | 2.90 |
+| SWEET | −0.05 | 1.03 | 0.9% | 2.29 |
+
+Detectors that count every token (KGW, EWD-unweighted, Unigram) are **miscalibrated on human code**: sd 1.2–1.4 instead of 1, so the textbook z = 2.33 threshold gives 2.5–3.8% FPR, not 1%. Code is repetitive (the same token pairs recur), which breaks the independence assumption behind the z-test. The entropy-aware detectors (SWEET, EWD) skip or down-weight those low-entropy tokens and are calibrated (sd ≈ 1.03, FPR ≈ 0.7–0.9%). All TPRs below use the empirical thresholds.
+
+Detection on all 540 generations of each config (`outputs/tables/detection.csv`); "passing" = only the generations that pass the extended tests (the population the attacks start from). FPR on unwatermarked Qwen generations at the same threshold: 0.4–1.1% for every detector, and AUROC of unwatermarked generations vs. human code is 0.41–0.51, so the detectors respond to the watermark and not to "LLM-ness".
+
+| Config | Detector | mean z | TPR@1%FPR | AUROC | TPR@1%FPR (passing only) |
+|---|---|---|---|---|---|
+| KGW δ=2 | KGW | 1.40 | 9.6% | 0.741 | 5.9% |
+| EWD δ=2 | EWD-unweighted | 1.23 | 13.1% | 0.735 | 8.6% |
+| EWD δ=2 | EWD | 1.78 | 38.0% | 0.869 | 30.7% |
+| Unigram δ=2 | Unigram | 0.65 | 4.4% | 0.692 | 1.1% |
+| SWEET δ=2 | SWEET | 1.35 | 20.7% | 0.820 | 17.2% |
+| KGW δ=4 | KGW | 3.42 | 49.6% | 0.921 | 34.8% |
+| EWD δ=4 | EWD-unweighted | 3.85 | 61.3% | 0.917 | 47.0% |
+| EWD δ=4 | EWD | 3.87 | 79.3% | 0.967 | 71.0% |
+| Unigram δ=4 | Unigram | 3.63 | 56.1% | 0.955 | 34.4% |
+| SWEET δ=4 | SWEET | 2.04 | 43.3% | 0.883 | 32.0% |
+
+**Findings.**
+- At δ=2 code watermarks are nearly undetectable at 1% FPR (1–31% on passing code). The prose positive control at the same δ gives z 4–9: code's low entropy leaves little room to bias.
+- **Entropy weighting is the single biggest lever.** On *identical texts* EWD more than triples the TPR of the unweighted z-test at δ=2 (30.7% vs 8.6%) and raises it from 47% to 71% at δ=4.
+- Correct (passing) code is consistently harder to detect than all generations: the watermark that pushes a token off the model's preferred choice is also what breaks programs, so the surviving correct programs carry less signal.
+- Trade-off: SWEET is the only method with both near-zero pass@1 cost and non-trivial detection; EWD δ=4 detects best but loses 20 points of pass@1.
 
 ## QP2: Robustness under attacks
-_TBD_
+`outputs/tables/attacks.csv`; figures `figures/fig_tpr_attacks_d2.{png,pdf}`, `figures/fig_tpr_attacks_d4.{png,pdf}`. Attacks are applied to generations that pass the extended tests; "No attack" = TPR on those passing generations. Every attacked program still passes the extended tests (**survival 100% for every attack and config**; 2,764/2,764 for the canonical solutions too), so all attacks are semantics-preserving and every applied attack counts. `black` is a no-op on 17–44% of programs (already formatted) and `strip_comments` on 3–25% (no comments); TPR is computed over the programs the attack actually changed, compared with the same programs unattacked.
+
+TPR @ 1% FPR (%) on the same programs, unattacked → attacked, **δ=4**:
+
+| Detector | Strip comments | black | Rename 1 | Rename 2 | Rename all | Dead code + try |
+|---|---|---|---|---|---|---|
+| KGW | 43.5 → 5.0 | 47.1 → 42.1 | 34.8 → 32.9 | 34.8 → 28.1 | 34.8 → 21.9 | 34.8 → 31.0 |
+| EWD-unweighted | 48.2 → 8.8 | 54.4 → 38.8 | 47.0 → 41.5 | 47.0 → 39.0 | 47.0 → 36.5 | 47.0 → 30.0 |
+| EWD | 72.5 → 24.4 | 78.2 → 72.8 | 71.0 → 68.5 | 71.0 → 62.5 | 71.0 → 58.0 | 71.0 → 39.0 |
+| Unigram | 38.2 → 3.5 | 37.6 → 24.1 | 34.4 → 28.1 | 34.4 → 23.8 | 34.4 → 16.2 | 34.4 → 40.6 |
+| SWEET | 33.7 → 9.2 | 31.4 → 31.0 | 32.0 → 26.6 | 32.0 → 22.2 | 32.0 → 15.5 | 32.0 → 5.7 |
+
+**δ=2**:
+
+| Detector | Strip comments | black | Rename 1 | Rename 2 | Rename all | Dead code + try |
+|---|---|---|---|---|---|---|
+| KGW | 7.0 → 0.9 | 7.4 → 8.0 | 5.9 → 4.5 | 5.9 → 5.2 | 5.9 → 4.9 | 5.9 → 5.6 |
+| EWD-unweighted | 8.8 → 2.5 | 11.9 → 8.5 | 8.6 → 7.6 | 8.6 → 5.3 | 8.6 → 4.6 | 8.6 → 2.6 |
+| EWD | 32.5 → 9.2 | 33.3 → 27.4 | 30.7 → 22.4 | 30.7 → 20.8 | 30.7 → 17.5 | 30.7 → 5.0 |
+| Unigram | 0.4 → 0.9 | 1.0 → 1.0 | 1.1 → 1.1 | 1.1 → 0.4 | 1.1 → 0.0 | 1.1 → 3.2 |
+| SWEET | 18.2 → 4.7 | 17.6 → 17.1 | 17.2 → 13.5 | 17.2 → 10.7 | 17.2 → 8.8 | 17.2 → 2.2 |
+
+Mean fraction of Qwen tokens changed (difflib on token ids, averaged over configs): strip comments 0.48–0.62, black 0.05–0.12, rename 1/2/all 0.05–0.09 / 0.10–0.17 / 0.15–0.27, dead code 0.33–0.58 (range over configs).
+
+**Findings (QP2).**
+- **Comment and docstring removal is the strongest attack**, cutting TPR by 66–91% for every method (e.g. KGW δ=4 43.5% → 5.0%, EWD δ=4 72.5% → 24.4%). Most of the watermark signal lives in natural-language comments and docstrings, the high-entropy part of the output; it also removes ~55–60% of the tokens. "Code-only" watermark strength is therefore much lower than whole-output numbers suggest.
+- **Formatting (`black`) barely matters** for context-based methods (EWD 78 → 73, SWEET 31 → 31) because it changes few tokens (~5%).
+- **Renaming degrades detection monotonically with the number of names changed** (EWD δ=4 71 → 69 → 63 → 58), and is cheap: renaming all identifiers changes only 15–27% of tokens.
+- **Dead code + try/except** hurts the entropy-aware detectors most (SWEET δ=4 32 → 6, EWD 71 → 39): the inserted tokens are low-entropy and unwatermarked but dilute the weighted score, and wrapping changes the indentation tokens throughout the function body.
+- EWD keeps the highest TPR under every attack at δ=4 (ignoring the Unigram dead-code artifact below) and under every attack except dead code at δ=2, where all detectors are ≤ 6%.
+- **Artifact (Unigram + dead code)**: dead code *raises* Unigram TPR (34 → 41 at δ=4; 1.1 → 3.2 at δ=2). The three dead-code templates are fixed token strings, and Unigram's green list does not depend on context, so the same inserted tokens shift every sample's z in the same direction. This is a property of fixed-template attacks against a fixed green list, not robustness. (The same issue affected an earlier renaming attack that used `var_N` names; it was replaced by per-sample names, see Sanity checks.)
 
 ## QP3: TPR by code length
-_TBD_
+`outputs/tables/length.csv`, `outputs/tables/min_length.csv`; figures `figures/fig_tpr_length_d2.{png,pdf}`, `figures/fig_tpr_length_d4.{png,pdf}`. Length = Qwen tokens of the scored (sanitized) code; all 540 generations, unattacked; bins with n ≥ 10.
+
+TPR @ 1% FPR by length bin (tokens), δ=4:
+
+| Detector | 0–75 | 75–100 | 100–125 | 125–150 | 150–200 | 200–300 | 300+ |
+|---|---|---|---|---|---|---|---|
+| KGW | 27 | 63 | 66 | 65 | 71 | 88 | 95 |
+| EWD-unweighted | 27 | 57 | 70 | 68 | 76 | 70 | 87 |
+| EWD | 41 | 85 | 84 | 90 | 89 | 92 | 100 |
+| Unigram | 32 | 44 | 71 | 77 | 89 | 86 | 97 |
+| SWEET | 18 | 43 | 66 | 54 | 45 | 41 | 60 |
+
+δ=2: no detector reaches 80% in any bin (best: EWD 56% at 100–125 tokens; KGW ≤ 18%, Unigram ≤ 14%, SWEET ≤ 35%).
+
+**Minimum length for TPR ≥ 80% at 1% FPR (δ=4): EWD ≈ 75 tokens, Unigram ≈ 150, KGW ≈ 200, EWD-unweighted ≈ 300, SWEET not reached.** At δ=2 no length bin up to 300+ tokens reaches 80%.
+- The median generation is only 75–125 tokens long (`median_tokens` in `detection.csv`), and 24–49% are under 75 tokens, where every method is below 45% TPR. Typical code completions are simply too short for reliable detection.
+- SWEET's curve is flat because it only scores tokens above its entropy threshold: length in tokens is not the length SWEET "sees". Its effective sample size grows much more slowly with program length than the other methods'.
+- Caveat: bins differ in composition (different problems land in different bins), so the curve mixes length with problem type; bins are also small (n = 12–267).
 
 ## QP4 (optional): text vs code
 _Not started._
@@ -44,3 +141,7 @@ _Not started._
 - **Watermark pipeline positive control** (`scripts/_sanity_prose.py`): 200-token prose continuations, 3 prompts, δ=2. z-scores: KGW greedy 5.9–6.2 / sampled 8.0–9.1; EWD greedy 6.0–8.2 / sampled 7.1–9.6; Unigram greedy 3.7–7.2 / sampled 4.5–9.3; SWEET greedy 6.0–7.0 / sampled 7.2–9.5. The batched generation + MarkLLM detection path works; greedy decoding gives a weaker signal than sampling.
 - **Implementation note (MarkLLM)**: KGW seeds its green list with `hash_key · prf[prev_token]`, while EWD and SWEET use `hash_key · prev_token`. EWD therefore cannot score MarkLLM-KGW text. EWD gets its own generation config (MarkLLM `EWD` class = KGW soft-red-list biasing with the EWD hash). On those texts we report both the entropy-weighted EWD z and the unweighted green-count z ("EWD-unweighted"), a paired detector comparison on identical texts.
 - **Prompt copying**: under the EvalPlus instruct prompt, the model usually restates the HumanEval signature and docstring, so detection also scores that low-entropy copied text. Human negatives built as prompt + canonical solution contain the same docstring, so the comparison is like for like; the comment/docstring-removal attack isolates the effect.
+- **Detection-time edge case**: 2 generations per EWD config sanitize to ~2 tokens; EWD returns z = NaN on them (all entropy weights are 0). They are counted as *not detected* (not dropped), so they stay in TPR/FPR denominators.
+- **Attacked-code test bug (found and fixed)**: the first attack run recorded only 20–40% of attacked programs as passing, even for `black` and for canonical solutions under the new renaming. Cause: `04_attack.py` imported `transformers` at module level, which loads torch (~5.6 GB virtual memory). EvalPlus test workers are spawned and re-import the script, and the forked test process inherits that address space, which counts against EvalPlus's 8 GB `RLIMIT_AS`, so heavier tests failed regardless of the program. Fix: the import moved inside `main()`. All recorded failures were re-tested with `scripts/04b_retest.py` (no torch import): **every one passes** (7,552 rows of the original attacks, 4,609 rows of the redone rename attacks, and 1,126 canonical rows; rows keep `retested`, `first_pass_*` fields). The pass@1 evals (`02_evaluate.py`, never imported torch) were re-tested the same way and **none of 2,491 failures flipped**, so QP1 is unaffected.
+- **Renaming attack redesign**: the first version renamed identifiers to `var_0, var_1, …`. With a fixed template the same few token pairs appear in every sample, and whether they happen to be green shifted every sample's z in the same direction (KGW δ=2 rename-all TPR went *up* from 7% to 36%; Unigram's mean z went down). Replaced by names drawn per sample from a pool of ordinary identifier words, seeded by the task id (deterministic, e.g. `left`, `index_temp`, `curr_chunk`). rename_1 ⊂ rename_2 ⊂ rename_all use the same names. Canonical solutions pass 540/540 under all three.
+- **Unattacked TPR ≥ attacked TPR** holds for every detector/attack except Unigram + dead code (template artifact, see QP2) and two ≤ 0.6-point differences at δ=2 that are within noise (KGW + black, Unigram + strip comments).

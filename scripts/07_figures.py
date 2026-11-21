@@ -28,8 +28,8 @@ from wm.config import FIGS, OUT  # noqa: E402
 COLOR = {"KGW": "#2a78d6", "EWD": "#eb6834", "Unigram": "#1baf7a", "SWEET": "#eda100",
          "EWD-unweighted": "#e87ba4", "none": "#8a8984"}
 INK, INK2, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
-ATTACK_LABEL = {"none": "No attack", "strip_comments": "Strip comments", "black": "black",
-                "rename_1": "Rename 1", "rename_2": "Rename 2", "rename_all": "Rename all",
+ATTACK_LABEL = {"none": "No\nattack", "strip_comments": "Strip\ncomments", "black": "black\n",
+                "rename_1": "Rename\n1 name", "rename_2": "Rename\n2 names", "rename_all": "Rename\nall names",
                 "deadcode_try": "Dead code +\ntry/except"}
 DET_ORDER = ["KGW", "EWD-unweighted", "EWD", "Unigram", "SWEET"]
 
@@ -138,7 +138,7 @@ def fig_length(ln, det, delta, out):
     ax.set_xlabel("Code length (Qwen tokens, lower edge of bin)")
     ax.set_ylabel("TPR at 1% FPR (%)")
     ax.set_ylim(0, 100)
-    ax.legend(loc="upper left")
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=3)
     save(fig, f"fig_tpr_length_d{int(delta)}", out)
 
 
