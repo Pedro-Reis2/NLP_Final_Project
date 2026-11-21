@@ -115,3 +115,11 @@ def test_rename_names_vary_by_sample():
     assert a != b
     assert rename(SAMPLES[0], None, "task/1") == a  # deterministic
     assert "var_" not in a
+
+
+def test_nc_attacks_strip_first():
+    src = SAMPLES[0]
+    for a in ("black", "rename_2", "deadcode_try"):
+        out = apply_attack("nc_" + a, src, salt="t")
+        assert out == apply_attack(a, strip_comments(src), salt="t")
+        assert '"""' not in out

@@ -164,6 +164,13 @@ def main():
             if za.empty:
                 continue
             za = za.set_index("id")
+            # z of the comment-stripped code per task (original z where stripping was a no-op):
+            # the paired baseline for the nc_* ("without comments") attacks
+            st = atk[atk.attack == "strip_comments"]
+            z_strip = zg["z"].to_dict()
+            for _, r in st[st.status == "ok"].iterrows():
+                if r.id in za.index:
+                    z_strip[r.task_id] = za.loc[r.id, "z"]
             for a in ATTACKS:
                 sub = atk[atk.attack == a]
                 n_orig = len(sub)  # originals that passed plus tests
@@ -182,6 +189,8 @@ def main():
                     "TPR_orig_same_tasks": (z_orig > thr[d]).mean(), "TPR_attacked": (z_att > thr[d]).mean(),
                     "AUROC_attacked": auroc(z_att, negz[d]), "mean_z_orig": zmean(z_orig),
                     "mean_z_attacked": zmean(z_att), "mean_frac_tok_changed": valid.frac_tok_changed.mean(),
+                    "TPR_stripped_same_tasks": (np.array([z_strip.get(t, np.nan) for t in valid.task_id])
+                                                > thr[d]).mean() if a.startswith("nc_") else np.nan,
                 })
     pd.DataFrame(arows).to_csv(tdir / "attacks.csv", index=False)
 

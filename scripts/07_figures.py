@@ -31,6 +31,16 @@ INK, INK2, GRID, SURFACE = "#0b0b0b", "#52514e", "#e4e3df", "#fcfcfb"
 ATTACK_LABEL = {"none": "No\nattack", "strip_comments": "Strip\ncomments", "black": "black\n",
                 "rename_1": "Rename\n1 name", "rename_2": "Rename\n2 names", "rename_all": "Rename\nall names",
                 "deadcode_try": "Dead code +\ntry/except"}
+# "Without comments" condition: comments + docstrings stripped first, then the attack
+NC_LABEL = {"strip_comments": "Comments
+stripped", "nc_black": "+ black
+", "nc_rename_1": "+ rename
+1 name",
+            "nc_rename_2": "+ rename
+2 names", "nc_rename_all": "+ rename
+all names",
+            "nc_deadcode_try": "+ dead code,
+try/except"}
 DET_ORDER = ["KGW", "EWD-unweighted", "EWD", "Unigram", "SWEET"]
 
 plt.rcParams.update({
@@ -122,6 +132,26 @@ def fig_attacks(atk, det, delta, out):
     save(fig, f"fig_tpr_attacks_d{int(delta)}", out)
 
 
+def fig_attacks_nc(atk, delta, out):
+    """Same chart for the "without comments" condition: every bar is on comment-stripped code."""
+    a = atk[atk.delta == delta]
+    dets = [x for x in DET_ORDER if x in set(a.detector)]
+    attacks = [k for k in NC_LABEL if k in set(a.attack)]
+    fig, ax = plt.subplots(figsize=(7.2, 2.9))
+    w = 0.8 / len(dets)
+    x = np.arange(len(attacks))
+    for i, d in enumerate(dets):
+        vals = [a[(a.detector == d) & (a.attack == at)]["TPR_attacked"].mean() for at in attacks]
+        ax.bar(x - 0.4 + w * (i + 0.5), np.array(vals) * 100, width=w - 0.02, color=COLOR[d], label=d,
+               edgecolor=SURFACE, linewidth=1)
+    ax.set_xticks(x, [NC_LABEL[k] for k in attacks])
+    ax.set_ylabel("TPR at 1% FPR (%)")
+    ax.set_ylim(0, 100)
+    ax.grid(axis="x", visible=False)
+    ax.legend(ncol=len(dets), loc="lower center", bbox_to_anchor=(0.5, 1.0))
+    save(fig, f"fig_tpr_attacks_nocomments_d{int(delta)}", out)
+
+
 def fig_length(ln, det, delta, out):
     cfg_of = det[det.delta == delta][["config_id", "detector"]]
     d = ln.merge(cfg_of, on=["config_id", "detector"])
@@ -161,6 +191,8 @@ def main():
     for delta in sorted(det.delta.dropna().unique()) if not det.empty else []:
         if not atk.empty:
             fig_attacks(atk, det, delta, out)
+            if atk.attack.str.startswith("nc_").any():
+                fig_attacks_nc(atk, delta, out)
         if not ln.empty:
             fig_length(ln, det, delta, out)
 

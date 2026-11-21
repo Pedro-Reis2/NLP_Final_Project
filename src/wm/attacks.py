@@ -10,6 +10,7 @@ Attacks (ids used in output files):
   rename_1/2/all   rename 1, 2 or all eligible local identifiers
   deadcode_try     insert a dead `if False:` block and wrap function bodies in
                    try/except-reraise
+  nc_<attack>      strip_comments first, then <attack> (the "without comments" condition)
 """
 from __future__ import annotations
 
@@ -21,7 +22,11 @@ import keyword
 import random
 import tokenize
 
-ATTACKS = ["strip_comments", "black", "rename_1", "rename_2", "rename_all", "deadcode_try"]
+BASE_ATTACKS = ["strip_comments", "black", "rename_1", "rename_2", "rename_all", "deadcode_try"]
+# "Without comments" variants (QP2): strip comments + docstrings first, then the attack.
+# Same salt as the plain variant, so X and nc_X pick the same new names / dead code.
+NC_ATTACKS = ["nc_" + a for a in BASE_ATTACKS[1:]]
+ATTACKS = BASE_ATTACKS + NC_ATTACKS
 
 
 class AttackError(Exception):
@@ -288,6 +293,8 @@ def deadcode_try(src: str, salt: str = "") -> str:
 
 # ----------------------------------------------------------------- dispatch
 def apply_attack(name: str, src: str, salt: str = "") -> str:
+    if name.startswith("nc_"):
+        return apply_attack(name[3:], strip_comments(src), salt)
     if name == "strip_comments":
         return strip_comments(src)
     if name == "black":
