@@ -1,0 +1,31 @@
+{
+  "step": "multichannel_embed",
+  "source_config": "nowm",
+  "payload": "qwen",
+  "key": "15485863",
+  "t": 2,
+  "codeword_bits": 32,
+  "channels": [
+    "naming(2 bits)",
+    "aug_assign",
+    "compare_dir",
+    "equality_dir",
+    "empty_coll",
+    "none_check"
+  ],
+  "reference": "Choi, Gao & Duan (2026), arXiv:2607.06009 (reimplementation)",
+  "git_sha": "186238c",
+  "time": "2026-11-21 13:43:26",
+  "python": "3.12.3",
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.23.0",
+    "markllm": "0.1.5",
+    "evalplus": "0.3.1",
+    "black": "26.10.1"
+  },
+  "argv": [
+    "scripts/11_multichannel.py",
+    "embed"
+  ]
+}

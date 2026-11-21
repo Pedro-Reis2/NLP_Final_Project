@@ -44,6 +44,30 @@ Per dataset (original / extended): HumanEval+ — nowm 67.5/60.7, KGW2 62.6/55.8
 - δ=4 is destructive for the methods that bias every token: −20 (KGW), −24 (EWD), −29 (Unigram) points. SWEET δ=4 loses only ~2 points: entropy gating is what makes a strong watermark compatible with code.
 - **The original tests do not hide extra watermark damage.** The original-vs-extended gap is 8.7 points for the baseline and 4.8–10.2 for watermarked configs, i.e. the extended tests lower every config by a similar amount. The drop measured with the extended tests is within 4 points of the drop measured with the original tests for every config, and for 5 of 8 configs (all four δ=4 configs and EWD δ=2) it is *smaller*; KGW δ=2, Unigram δ=2 and SWEET δ=2 show a slightly larger drop with the extended tests (+0.4, +1.5, +0.6 points). The answer to "how much do the original tests underestimate the damage?" is: they do not, in this setting; if anything they slightly overstate it. The strong δ=4 configs even have a *smaller* gap, because the problems they still solve are the easier ones.
 
+### Differential testing on fresh inputs
+`scripts/13_differential.py` → `outputs/tables/difftest.csv`. Do programs that pass the extended tests still agree with the reference on inputs EvalPlus never tried?
+- **Inputs:** 30 fresh inputs per problem from EvalPlus's own type-aware mutator, seeded with each problem's base and plus inputs. Only inputs that satisfy the problem's contract (EvalPlus's input-validity asserts) and run on the canonical solution are kept. Fresh inputs exist for 518 of 540 problems; the other 22 timed out or had no valid mutations.
+- **Oracle:** expected outputs come from the canonical solution, the same oracle EvalPlus uses for its plus tests.
+- **Test:** every program that passes the extended tests is re-run with these inputs as its plus set. Failures were re-tested once at low parallelism; none flipped.
+
+| Config | Programs re-tested | Fail on fresh inputs | Share [95% CI] | Change vs no watermark, same tasks [95% CI] |
+|---|---|---|---|---|
+| Canonical (sanity) | 518 | 0 | 0% | — |
+| No watermark | 296 | 2 | 0.7% [0, 1.7] | — |
+| KGW δ=2 | 278 | 2 | 0.7% [0, 1.8] | +0.4 [0, 1.3] |
+| EWD δ=2 | 291 | 1 | 0.3% [0, 1.0] | +0.4 [0, 1.2] |
+| Unigram δ=2 | 272 | 0 | 0% | −0.4 [−1.3, 0] |
+| SWEET δ=2 | 308 | 0 | 0% | 0 |
+| KGW δ=4 | 203 | 3 | 1.5% [0, 3.5] | +1.7 [0, 4.0] |
+| EWD δ=4 | 195 | 2 | 1.0% [0, 2.6] | +1.2 [0, 3.1] |
+| Unigram δ=4 | 155 | 0 | 0% | 0 |
+| SWEET δ=4 | 286 | 0 | 0% | 0 |
+| Multicanal (post-generation) | 296 | 2 | 0.7% [0, 1.7] | 0 |
+
+- **The extended tests are essentially sufficient.** At most 1.5% of programs that pass them fail on fresh inputs, and pass@1 drops by at most 0.6 points when fresh inputs are added.
+- **Watermarking adds no detectable hidden bugs.** Every paired interval includes 0. KGW and EWD at δ=4 show the largest point estimates (+1.7 and +1.2 points), which is worth a sentence in the paper.
+- This complements QP1. The original tests miss 5–10 points of bugs for every config alike, while the extended tests miss almost none. Neither depends on the watermark.
+
 ## Detection without attacks (TPR @ 1% FPR, AUROC)
 Thresholds (`outputs/tables/thresholds.csv`), set on 1,540 human negatives:
 
@@ -144,6 +168,39 @@ TPR @ 1% FPR (%), comments stripped → comments stripped + attack, **δ=4**:
 - `black` and renaming a single name still matter least.
 - The Unigram dead-code artifact persists: dead code raises Unigram from 3.1% to 6.9% at δ=4 (from 1.4% to 1.8% at δ=2).
 
+### Attack 5: LLM rewrite (sample, upper bound)
+`scripts/10_llm_rewrite.py` → `outputs/tables/llm_rewrite.csv`.
+- **Sample:** per watermarked config, 100 programs drawn (seed 42) from those passing the extended tests.
+- **Rewriter:** Qwen2.5-Coder-1.5B-Instruct itself, *without* a watermark, greedy. It is asked to rewrite the program so it behaves identically but looks different (rename, restructure, reword comments), keeping the entry function's name and parameters. When it still renamed top-level functions, they were mapped back by position, as an attacker would.
+- **Counting:** only rewrites that pass the extended tests count, the same rule as the other attacks.
+
+| Config | Survival | TPR before → after [95% CI] |
+|---|---|---|
+| KGW δ=2 | 83% | 4.8 → 2.4 [0, 6.0] |
+| EWD δ=2 | 85% | 25.9 → 8.2 [1.2, 14.1] |
+| EWD-unweighted δ=2 | 85% | 7.1 → 3.5 [0, 8.2] |
+| Unigram δ=2 | 89% | 1.1 → 1.1 [0, 3.4] |
+| SWEET δ=2 | 85% | 17.6 → 2.4 [0, 8.2] |
+| KGW δ=4 | 87% | 33.3 → 3.4 [0, 8.0] |
+| EWD δ=4 | 90% | 67.8 → 6.7 [1.1, 13.3] |
+| EWD-unweighted δ=4 | 90% | 43.3 → 3.3 [0, 8.9] |
+| Unigram δ=4 | 86% | 31.4 → 2.3 [0, 5.8] |
+| SWEET δ=4 | 86% | 24.4 → 4.7 [0, 9.3] |
+
+- **Even a 1.5B model's rewrite removes every watermark.** After a rewrite, no detector exceeds 8.2% TPR. The drop is significant for every detector with a non-trivial baseline (EWD δ=4: −61 points [−71, −50]).
+- **Unlike the rule-based attacks, the rewrite sometimes breaks code:** 10–17% of rewrites fail the extended tests. It also changes most of the program (87–177% of tokens, since rewrites are often longer).
+- This is the pitch's "upper bound" attack. A stronger rewriter would only do better at removal.
+
+### Attack × mark map
+`figures/fig_attack_map.{png,pdf}` gathers every attack (columns) against every mark (rows) in one heatmap.
+- **Rows:** the decoding-time detectors at both δ, plus the post-generation Multicanal watermark.
+- **Columns:** with comments, comments stripped first, and the LLM rewrite.
+- **Cells:** change in TPR @ 1% FPR in points on the same programs; `*` means the 95% bootstrap CI excludes 0.
+
+The two families fail in opposite places:
+- **Decoding-time marks** live mostly in comments and docstrings, so comment stripping, and anything after it, removes them.
+- **The post-generation mark** lives in identifier conventions and syntactic choices, so it is untouched by comment stripping and `black`. Renaming, dead code and the LLM rewrite hit it.
+
 ## QP3: TPR by code length
 `outputs/tables/length.csv`, `outputs/tables/min_length.csv`; figures `figures/fig_tpr_length_d2.{png,pdf}`, `figures/fig_tpr_length_d4.{png,pdf}`. Length = Qwen tokens of the scored (sanitized) code; all 540 generations, unattacked; bins with n ≥ 10.
 
@@ -163,6 +220,29 @@ TPR @ 1% FPR by length bin (tokens), δ=4:
 - The median generation is only 75–125 tokens long (`median_tokens` in `detection.csv`), and 24–49% are under 75 tokens, where every method is below 45% TPR. Typical code completions are simply too short for reliable detection.
 - SWEET's curve is flat because it only scores tokens above its entropy threshold: length in tokens is not the length SWEET "sees". Its effective sample size grows much more slowly with program length than the other methods'.
 - Caveat: bins differ in composition (different problems land in different bins), so the curve mixes length with problem type; bins are also small (n = 12–267).
+
+### QP3 by marking sites
+`scripts/12_sites.py` → `outputs/tables/sites.csv`, `min_sites.csv`. The pitch asks for tokens *or marking sites*: the positions each detector actually scores.
+- **KGW, EWD-unweighted:** every token after the 1-token prefix.
+- **Unigram:** every token.
+- **SWEET:** tokens above its 0.9 entropy threshold.
+- **EWD:** the effective sample size of its entropy weights, (Σw)²/Σw².
+- **Multicanal:** readable votes.
+
+| Detector | Median sites per program | Tokens per site | Sites for TPR ≥ 80% at δ=4 |
+|---|---|---|---|
+| KGW | 74–79 | 1.0 | 200 |
+| EWD-unweighted | 105–124 | 1.0 | 300 |
+| Unigram | 88–89 | 1.0 | 160 |
+| EWD | 37–46 (effective) | 2.6–2.7 | **40** |
+| SWEET | 23–24 | 4.2–4.3 | not reached |
+| Multicanal | 2 votes | 27 | 8 votes (only 34 of 540 programs have that many) |
+
+At δ=2 no detector reaches 80% in any site bin.
+- **EWD needs the fewest sites by far.** Weighting concentrates the evidence: about 40 effective sites give 91% TPR at δ=4.
+- **SWEET does not improve with more sites.** At δ=4 its TPR peaks at 67% with 30–40 scored sites and falls back to 45–53% beyond that. Its flat length curve is therefore not a lack of sites.
+  - A likely cause: our protocol scores the code without its prompt. The entropies SWEET recomputes at detection then differ from the ones that decided which tokens were biased at generation, so it partly scores the wrong tokens.
+  - EWD only weights rather than gates, so it is less sensitive to this.
 
 ## QP4 (optional): text vs code
 Same model, watermarks (KGW, Unigram; γ=0.5, same key) and greedy decoding as the code study. Only the domain changes.
@@ -199,6 +279,43 @@ The text AUROC vs human text is 0.996–1.000. Unwatermarked Qwen text is above 
   - The two attacks are not equivalent edits. Word substitution does not preserve meaning, and it changes tokens in place without deleting them. The code attacks preserve function, as checked by the tests.
   - "Fraction of tokens changed" puts them on one axis, but the comparison is about how much signal survives per edit, not about attack strength.
   - Greedy decoding loops on some news prefixes: 2–13% of text generations have a distinct-word ratio below 0.3 (`frac_repetitive`). Excluding them leaves TPR unchanged (`TPR_nonrepetitive` 99–100%) and lowers the KGW false-positive rate on unwatermarked Qwen text from 3.0% to 1.7%.
+
+## Post-generation family: multi-channel watermark (reimplementation)
+The pitch evaluates both families. For the post-generation family it names the multi-channel scheme of Choi, Gao & Duan (2026, arXiv:2607.06009). The repository the paper links (`github.com/soohyeonc/Multi_Channel_Watermarking`) returned "not found" on 2026-11-21, and the author's public repositories do not include it. We therefore reimplemented the scheme from the paper (`src/wm/multichannel.py`, `scripts/11_multichannel.py`, unit tests in `tests/test_multichannel.py`).
+
+**What the reimplementation includes:**
+- A naming channel: 2 bits per multi-word variable, encoded in snake / camel / Pascal / ALL_CAPS.
+- 5 of the paper's 8 structural pairs: `x = x + y`/`x += y`, `a < b`/`b > a`, operand order of `==`, `[]`/`list()`, `== None`/`is None`.
+- A 24-bit payload ("qwen") in the paper's compact systematic binary code (t = 2, 32-bit codeword), keyed spread-spectrum assignment of sites to codeword bits, and majority voting.
+
+**Differences from the paper:**
+- `list_comp`, `ternary` and `operand_order` are omitted. The first two are complex rewrites; `a + b → b + a` is not behaviour-preserving for strings and lists.
+- Single-word variables are not extended to multi-word names.
+- The permutation is seeded from SHA-256 rather than secp256k1.
+- Code is regenerated with `ast.unparse`, so `#` comments are dropped.
+
+**Detection:**
+- The paper's rule: the 24-bit payload is exactly recovered.
+- For a comparison under our protocol, a vote-agreement z-score, (agree − n/2)/√(n/4), thresholded empirically at 1% FPR on the same 1,540 human negatives.
+
+**Application:** the watermark is applied to the unwatermarked Qwen generations. It is applied after generation, so it needs no model access.
+
+**Results** (`outputs/tables/mcw_*.csv`):
+- **Behaviour (QP1): no cost.** pass@1 is unchanged on both test sets (65.6% original, 56.9% extended); 0 programs broken. Differential testing on fresh inputs also finds no change. Every embedding round-trips exactly.
+- **Capacity is the binding constraint.**
+  - 161 of 540 programs (30%) contain no site at all. The median program offers 1 site and 2 readable votes, against a 32-bit codeword.
+  - No program reaches 32 votes. Even counting the sites the paper's full channel set would add (an upper-bound estimate), only 0.2% would.
+  - **The exact 24-bit payload is never recovered (0% of 540), on watermarked code or on negatives.** The paper evaluates files with at least 32 bits of capacity; function-level solutions are an order of magnitude smaller.
+- **Detection with the z-score:**
+  - TPR @ 1% FPR is **12.0% [8.9, 21.1]** overall and 17.2% on the 379 programs that carry the mark. AUROC is 0.69 and the threshold is z = 2.24.
+  - Detection is all-or-nothing by capacity: 0% below 4 votes, 26.5% at 4–7 votes, 100% at 8 or more. Only 34 programs have 8 or more votes.
+  - FPR on unwatermarked Qwen code is 1.7%. 25% of human programs have no readable vote.
+- **Robustness (same attacks, same rules; every attacked program still passes):**
+  - **Unaffected:** comment stripping, `black`, and renaming 1 name (with or without comments).
+  - **Renaming 2 or all names:** −5 points (rename 2: [−13, −2]; rename all: [−14, −1]). Renamed identifiers lose the embedded case convention.
+  - **Dead code:** −3 points [−9, −1].
+  - **LLM rewrite:** 13.3% → 3.3% (−10 points [−23, −2]; 92% survival).
+  - The decoding-time marks lose 25–48 points to comment stripping at δ=4; this mark loses none. Its weak point is capacity, not robustness to formatting.
 
 ## Uncertainty (bootstrap 95% CIs)
 `scripts/09_uncertainty.py` → `outputs/tables/ci_pass_at_1.csv`, `ci_detection.csv`, `ci_attacks.csv`. It uses a percentile bootstrap with 2,000 resamples and seed 42.
@@ -256,3 +373,10 @@ The text AUROC vs human text is 0.996–1.000. Unwatermarked Qwen text is above 
 - **Attacked-code test bug (found and fixed)**: the first attack run recorded only 20–40% of attacked programs as passing, even for `black` and for canonical solutions under the new renaming. Cause: `04_attack.py` imported `transformers` at module level, which loads torch (~5.6 GB virtual memory). EvalPlus test workers are spawned and re-import the script, and the forked test process inherits that address space, which counts against EvalPlus's 8 GB `RLIMIT_AS`, so heavier tests failed regardless of the program. Fix: the import moved inside `main()`. All recorded failures were re-tested with `scripts/04b_retest.py` (no torch import): **every one passes** (7,552 rows of the original attacks, 4,609 rows of the redone rename attacks, and 1,126 canonical rows; rows keep `retested`, `first_pass_*` fields). The pass@1 evals (`02_evaluate.py`, never imported torch) were re-tested the same way and **none of 2,491 failures flipped**, so QP1 is unaffected.
 - **Renaming attack redesign**: the first version renamed identifiers to `var_0, var_1, …`. With a fixed template the same few token pairs appear in every sample, and whether they happen to be green shifted every sample's z in the same direction (KGW δ=2 rename-all TPR went *up* from 7% to 36%; Unigram's mean z went down). Replaced by names drawn per sample from a pool of ordinary identifier words, seeded by the task id (deterministic, e.g. `left`, `index_temp`, `curr_chunk`). rename_1 ⊂ rename_2 ⊂ rename_all use the same names. Canonical solutions pass 540/540 under all three.
 - **Unattacked TPR ≥ attacked TPR** holds for every detector/attack except Unigram + dead code (template artifact, see QP2) and two ≤ 0.6-point differences at δ=2 that are within noise (KGW + black, Unigram + strip comments).
+- **Differential-testing oracle**: the canonical solutions pass all fresh inputs on 518/518 problems, so the fresh-input oracle is sound. A program fails only if it disagrees with the reference.
+- **Multi-channel reimplementation**:
+  - Every embedding round-trips (canonical form of watermarked code = canonical form of the original, 379/379).
+  - The code corrects erasures and rejects bit errors (`tests/test_multichannel.py`).
+  - Embedding breaks no program (0 of 540 change pass/fail status).
+  - Exact decoding never fires on human negatives or unwatermarked Qwen code (0%).
+- **LLM-rewrite entry point**: the rewriter often renames the top-level function despite the instruction. Its top-level functions are mapped back by position before testing, the step an attacker would take. Rewrites that still fail the extended tests do not count.

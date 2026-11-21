@@ -1,7 +1,7 @@
 {
   "step": "detect",
   "gamma": 0.5,
-  "targets": "atk:kgw_d2,atk:ewd_d2,atk:unigram_d2,atk:sweet_d2,atk:kgw_d4,atk:ewd_d4,atk:unigram_d4,atk:sweet_d4",
+  "targets": "rw:kgw_d2,rw:ewd_d2,rw:unigram_d2,rw:sweet_d2,rw:kgw_d4,rw:ewd_d4,rw:unigram_d4,rw:sweet_d4",
   "detector_config": {
     "config_id": "kgw_d2",
     "method": "KGW",
@@ -17,8 +17,8 @@
     },
     "model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct"
   },
-  "git_sha": "66ac906",
-  "time": "2026-11-21 12:29:52",
+  "git_sha": "a38b023",
+  "time": "2026-11-21 14:01:49",
   "python": "3.12.3",
   "versions": {
     "torch": "2.11.0+cu128",
@@ -30,6 +30,6 @@
   "argv": [
     "scripts/05_detect.py",
     "--targets",
-    "atk:kgw_d2,atk:ewd_d2,atk:unigram_d2,atk:sweet_d2,atk:kgw_d4,atk:ewd_d4,atk:unigram_d4,atk:sweet_d4"
+    "rw:kgw_d2,rw:ewd_d2,rw:unigram_d2,rw:sweet_d2,rw:kgw_d4,rw:ewd_d4,rw:unigram_d4,rw:sweet_d4"
   ]
 }

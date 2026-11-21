@@ -1,0 +1,12 @@
+config_id,delta,detector,median_sites,median_tokens_per_site,min_sites_TPR80
+kgw_d2,2.0,KGW,78.5,1.012739370334307,
+ewd_d2,2.0,EWD,36.78406571874787,2.7411311853482667,
+ewd_d2,2.0,EWD-unweighted,105.0,1.0095238095238095,
+unigram_d2,2.0,Unigram,89.0,1.0,
+sweet_d2,2.0,SWEET,23.0,4.2727272727272725,
+kgw_d4,4.0,KGW,74.0,1.0135135135135136,200.0
+ewd_d4,4.0,EWD,45.63186830630683,2.624855481265506,40.0
+ewd_d4,4.0,EWD-unweighted,124.0,1.0080645161290323,300.0
+unigram_d4,4.0,Unigram,87.5,1.0,160.0
+sweet_d4,4.0,SWEET,24.0,4.203448275862069,
+mcw,,Multicanal,2.0,27.2,8.0

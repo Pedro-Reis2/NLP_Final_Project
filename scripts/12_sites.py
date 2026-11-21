@@ -27,7 +27,7 @@ from wm.io import append_jsonl, done_ids, get_logger, read_jsonl  # noqa: E402
 
 log = get_logger("sites")
 GPU_CFGS = ["ewd_d2", "sweet_d2", "ewd_d4", "sweet_d4"]
-BINS = [0, 10, 20, 30, 40, 60, 80, 120, 10_000]
+BINS = [0, 10, 20, 30, 40, 60, 80, 120, 160, 200, 300, 10_000]
 
 
 def count():

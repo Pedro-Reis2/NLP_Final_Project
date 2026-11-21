@@ -182,36 +182,52 @@ def fig_tradeoff(t, out):
 
 def fig_attack_map(t, out):
     """Attack x mark map: change in TPR@1%FPR (points) vs the same programs unattacked, every
-    config x detector x attack; * = 95% bootstrap CI excludes 0 (needs ci_attacks.csv)."""
+    detector x attack, both families; * = 95% bootstrap CI excludes 0. Sources: ci_attacks.csv
+    (rule-based attacks), llm_rewrite.csv (LLM rewrite, 100-program sample), mcw_attacks.csv
+    (post-generation multi-channel watermark, our reimplementation)."""
     from matplotlib.colors import TwoSlopeNorm
     a = pd.read_csv(t / "ci_attacks.csv")
+    rw = pd.read_csv(t / "llm_rewrite.csv") if (t / "llm_rewrite.csv").exists() else pd.DataFrame()
+    mcw = pd.read_csv(t / "mcw_attacks.csv") if (t / "mcw_attacks.csv").exists() else pd.DataFrame()
     cols = ["strip_comments", "black", "rename_1", "rename_2", "rename_all", "deadcode_try",
-            "nc_black", "nc_rename_1", "nc_rename_2", "nc_rename_all", "nc_deadcode_try"]
+            "nc_black", "nc_rename_1", "nc_rename_2", "nc_rename_all", "nc_deadcode_try", "llm_rewrite"]
     head = {"strip_comments": "Strip\ncomments", "black": "black", "rename_1": "Rename\n1", "rename_2": "Rename\n2",
             "rename_all": "Rename\nall", "deadcode_try": "Dead\ncode", "nc_black": "black", "nc_rename_1": "Rename\n1",
-            "nc_rename_2": "Rename\n2", "nc_rename_all": "Rename\nall", "nc_deadcode_try": "Dead\ncode"}
-    rows = [(dl, d) for dl in (2, 4) for d in DET_ORDER]
+            "nc_rename_2": "Rename\n2", "nc_rename_all": "Rename\nall", "nc_deadcode_try": "Dead\ncode",
+            "llm_rewrite": "LLM\nrewrite"}
+    rows = [(dl, d) for dl in (2, 4) for d in DET_ORDER] + ([(None, "Multicanal")] if not mcw.empty else [])
     M = np.full((len(rows), len(cols)), np.nan)
     S = np.zeros_like(M, dtype=bool)
     for i, (dl, d) in enumerate(rows):
         for j, c in enumerate(cols):
-            r = a[(a.delta == dl) & (a.detector == d) & (a.attack == c)]
-            if len(r):
-                M[i, j] = r.change.iloc[0] * 100
+            if d == "Multicanal":
+                r = mcw[mcw.attack == c]
+                ch = r.change if len(r) else None
+            elif c == "llm_rewrite":
+                r = rw[(rw.delta == dl) & (rw.detector == d)] if not rw.empty else rw
+                ch = (r.TPR_rewritten - r.TPR_orig) if len(r) else None
+            else:
+                r = a[(a.delta == dl) & (a.detector == d) & (a.attack == c)]
+                ch = r.change if len(r) else None
+            if ch is not None:
+                M[i, j] = ch.iloc[0] * 100
                 S[i, j] = (r.change_hi.iloc[0] < 0) or (r.change_lo.iloc[0] > 0)
-    fig, ax = plt.subplots(figsize=(7.2, 4.4))
+    fig, ax = plt.subplots(figsize=(7.6, 4.9))
     ax.grid(False)
-    im = ax.imshow(M, cmap="RdBu", norm=TwoSlopeNorm(vmin=-60, vcenter=0, vmax=60), aspect="auto")
+    im = ax.imshow(M, cmap="RdBu", norm=TwoSlopeNorm(vmin=-70, vcenter=0, vmax=70), aspect="auto")
     for i in range(M.shape[0]):
         for j in range(M.shape[1]):
             if not np.isnan(M[i, j]):
                 ax.text(j, i, f"{M[i, j]:+.0f}{'*' if S[i, j] else ''}", ha="center", va="center", fontsize=7,
                         color="white" if abs(M[i, j]) > 32 else INK)
     ax.set_xticks(range(len(cols)), [head[c] for c in cols], fontsize=7.5)
-    ax.set_yticks(range(len(rows)), [f"{d} (δ={dl})" for dl, d in rows], fontsize=8)
+    ax.set_yticks(range(len(rows)), [f"{d} (δ={dl})" if dl else f"{d} (post-gen.)" for dl, d in rows], fontsize=8)
     ax.tick_params(length=0)
     ax.axvline(5.5, color=SURFACE, lw=4)
+    ax.axvline(10.5, color=SURFACE, lw=4)
     ax.axhline(4.5, color=SURFACE, lw=4)
+    if len(rows) > 10:
+        ax.axhline(9.5, color=SURFACE, lw=4)
     ax.text(2.5, -1.25, "With comments", ha="center", fontsize=8.5, color=INK)
     ax.text(8.0, -1.25, "Comments stripped first", ha="center", fontsize=8.5, color=INK)
     for s in ax.spines.values():

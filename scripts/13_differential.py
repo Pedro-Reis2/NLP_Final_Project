@@ -209,12 +209,13 @@ def analyze(B: int = 2000):
         idx = rng.integers(0, len(f), size=(B, len(f)))
         lo, hi = unc.ci(f[idx].mean(1))
         ev = pd.DataFrame(read_jsonl(OUT / "evals" / f"{c}.jsonl"))
+        ev = ev[ev.id.isin(set(meta[meta.n_new > 0].id))]  # only problems that have fresh inputs
         n_all = len(ev)
         r = {"config_id": c, "method": (GEN_CONFIGS[c].method or "none") if c in GEN_CONFIGS else
              ("Multicanal" if c == "mcw" else "canonical"),
              "delta": GEN_CONFIGS[c].delta if c in GEN_CONFIGS else np.nan, "n_pass_plus_tested": len(x),
              "n_fail_fresh": int(f.sum()), "frac_fail_fresh": f.mean(), "lo": lo, "hi": hi,
-             "pass@1_plus": ev.pass_plus.mean(),
+             "n_problems": n_all, "pass@1_plus": ev.pass_plus.mean(),
              "pass@1_fresh": (len(x) - f.sum()) / n_all}
         if c not in ("nowm", "canonical"):
             common = sorted(set(x.index) & set(base.index))

@@ -1,0 +1,28 @@
+{
+  "step": "llm_rewrite",
+  "rewriter": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "watermark": null,
+  "decoding": {
+    "do_sample": false,
+    "max_new_tokens": 768
+  },
+  "n_per_config": 100,
+  "seed": 42,
+  "prompt": "Rewrite the following Python program so that it behaves exactly the same but looks different. Rename the variables and helper names, restructure the code (for example change loops, conditions and expressions into equivalent forms), and rewrite any comments and docstrings in your own words. Keep the names and signatures of the top-level functions unchanged. Return the complete program in one markdown code block.\n\n```python\n{code}\n```",
+  "git_sha": "a38b023",
+  "time": "2026-11-21 14:26:28",
+  "python": "3.12.3",
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.23.0",
+    "markllm": "0.1.5",
+    "evalplus": "0.3.1",
+    "black": "26.10.1"
+  },
+  "argv": [
+    "scripts/10_llm_rewrite.py",
+    "gen",
+    "--configs",
+    "mcw"
+  ]
+}

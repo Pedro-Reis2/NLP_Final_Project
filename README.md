@@ -36,6 +36,10 @@ Every step is resumable (appends to a JSONL keyed by id, skips finished ids) and
 | Tables | `06_analyze.py` | `outputs/tables/*.csv` |
 | Confidence intervals (bootstrap) | `09_uncertainty.py` (run before `07_figures.py`, which draws the trade-off figure from it) | `outputs/tables/ci_*.csv` |
 | Figures | `07_figures.py` | `figures/` |
+| LLM-rewrite attack (sample) | `run_rewrite.sh` (`10_llm_rewrite.py gen/test`, `05_detect.py --targets rw:...`, `10_llm_rewrite.py analyze`) | `outputs/rewrite/`, `outputs/tables/llm_rewrite.csv` |
+| Post-generation watermark (multi-channel, reimplementation) | `run_multichannel.sh` (`11_multichannel.py embed`, `02_evaluate.py --config mcw`, `04_attack.py --config mcw`, `11_multichannel.py detect/analyze`) | `outputs/tables/mcw_*.csv` |
+| Marking sites (QP3) | `12_sites.py count` (GPU), `12_sites.py analyze` | `outputs/detect/sites/`, `outputs/tables/sites.csv`, `min_sites.csv` |
+| Differential testing | `13_differential.py inputs/test/retest/analyze` | `outputs/difftest/`, `outputs/tables/difftest.csv` |
 | QP4 text study | `08_text_qp4.py all` (needs `data/c4/processed_c4.json` from the MarkLLM repo) | `outputs/qp4/`, `outputs/tables/qp4_*.csv` |
 
 Tests: `python -m pytest tests` (attacks preserve behaviour on sample programs).
