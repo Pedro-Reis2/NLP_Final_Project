@@ -132,7 +132,40 @@ TPR @ 1% FPR by length bin (tokens), δ=4:
 - Caveat: bins differ in composition (different problems land in different bins), so the curve mixes length with problem type; bins are also small (n = 12–267).
 
 ## QP4 (optional): text vs code
-_Not started._
+Same model, watermarks (KGW, Unigram; γ=0.5, same key) and greedy decoding as the code study. Only the domain changes.
+- **Positives**: continuations of 300 news prefixes from MarkLLM's C4 sample (`prompt` field of rows 0–299; no chat template), exactly 200 new tokens each, scored without the prompt.
+- **Negatives**: the human `natural_text` of 1,000 other rows (300–1,299), cut to the first 200 Qwen tokens, so they have the same length as the positives. Thresholds are set at 1% FPR on these, per detector.
+- **Attack**: random word substitution, replacing 10 / 20 / 30 / 50% of words with random words from the negatives' vocabulary, seeded per sample. Intensity is measured as the fraction of Qwen tokens changed, computed exactly as for the code attacks.
+- Script: `scripts/08_text_qp4.py`. Tables: `outputs/tables/qp4_text_detection.csv`, `outputs/tables/qp4_text_attacks.csv`. Figures: `figures/fig_qp4_text_vs_code_d{2,4}.{png,pdf}`.
+
+**Calibration on human text** (1,000 C4 continuations):
+
+| Detector | Mean z | SD z | Share above z = 2.33 | Threshold at 1% FPR |
+|---|---|---|---|---|
+| KGW | −0.26 | 1.05 | 0.6% | 2.08 |
+| Unigram | −0.07 | 1.21 | 2.2% | 2.73 |
+
+KGW is calibrated on prose but not on code (code sd 1.2–1.4). Unigram is miscalibrated in both domains.
+
+**Detection without attacks** (TPR at 1% FPR):
+
+| Config | Text mean z | Text TPR | Code mean z | Code TPR, all lengths | Code TPR, 200–300 tokens (n) |
+|---|---|---|---|---|---|
+| KGW δ=2 | 7.66 | **99.0%** | 1.40 | 9.6% | 15.9% (44) |
+| Unigram δ=2 | 6.95 | **99.7%** | 0.65 | 4.4% | 6.4% (47) |
+| KGW δ=4 | 11.50 | **100%** | 3.42 | 49.6% | 88.4% (43) |
+| Unigram δ=4 | 11.11 | **100%** | 3.63 | 56.1% | 86.0% (50) |
+
+The text AUROC vs human text is 0.996–1.000. Unwatermarked Qwen text is above the threshold for 3.0% (KGW) and 1.0% (Unigram) of samples, with AUROC vs human text of 0.44 and 0.40.
+
+**Findings**
+- **The same watermark is roughly 10× more detectable on text than on code.** At δ=2, text TPR is 99–100%, while code reaches 4–10%, or 6–16% for code of the same length (200–300 tokens). Matching length does not close the gap, so it is not a length effect: per-token green-list bias produces a z-score about 5–10× larger on prose (7–8 vs 0.65–1.4). Code is low-entropy: most tokens are forced, so the logit bias rarely changes the choice. This is the motivation for entropy-aware detectors (SWEET, EWD), and it agrees with their gains in the code study.
+- **At δ=4 the gap shrinks but remains.** Text is at 100%. Code is at 50–56% over all lengths, and only the 200–300-token bin approaches the text level (86–88%).
+- **Text watermarks are far more robust per token changed.** At δ=2, text TPR stays at 94% or above (KGW) and 91% or above (Unigram) with up to 46% of tokens changed. It only falls to 53% / 64% at 73–77% of tokens changed. At δ=4, TPR is at least 89% at every intensity. On code, stripping comments and docstrings changes 48–55% of tokens and drops TPR to 1% at δ=2 and 3–5% at δ=4. That attack removes exactly the natural-language part of the code, which carries most of the signal.
+- Caveats:
+  - The two attacks are not equivalent edits. Word substitution does not preserve meaning, and it changes tokens in place without deleting them. The code attacks preserve function, as checked by the tests.
+  - "Fraction of tokens changed" puts them on one axis, but the comparison is about how much signal survives per edit, not about attack strength.
+  - Greedy decoding loops on some news prefixes: 2–13% of text generations have a distinct-word ratio below 0.3 (`frac_repetitive`). Excluding them leaves TPR unchanged (`TPR_nonrepetitive` 99–100%) and lowers the KGW false-positive rate on unwatermarked Qwen text from 3.0% to 1.7%.
 
 ## Sanity checks
 - **Test harness**: all 541 canonical solutions pass both original and extended tests (163 HumanEval+, 378 MBPP+; `outputs/evals/canonical.jsonl`).

@@ -1,0 +1,31 @@
+{
+  "step": "qp4_generate",
+  "config_id": "kgw_d2",
+  "method": "KGW",
+  "delta": 2,
+  "gamma": 0.5,
+  "hash_key": 15485863,
+  "seed": 42,
+  "extra": {},
+  "decoding": {
+    "do_sample": false,
+    "min_new_tokens": 200,
+    "max_new_tokens": 200
+  },
+  "model_id": "Qwen/Qwen2.5-Coder-1.5B-Instruct",
+  "data": "MarkLLM C4 sample rows 0..299",
+  "git_sha": "1c5e5a7",
+  "time": "2026-11-21 10:56:03",
+  "python": "3.12.3",
+  "versions": {
+    "torch": "2.11.0+cu128",
+    "transformers": "5.23.0",
+    "markllm": "0.1.5",
+    "evalplus": "0.3.1",
+    "black": "26.10.1"
+  },
+  "argv": [
+    "scripts/08_text_qp4.py",
+    "all"
+  ]
+}
